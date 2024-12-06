@@ -1,4 +1,5 @@
-# Metrics Pipeline with Terraform
+# cloudwatch-metrics-in-amp
+Integrate Cloudwatch metrics in alerting in AMP
 This repository contains Terraform modules to deploy a modular and reusable metrics pipeline in AWS. The architecture supports processing and monitoring CloudWatch metrics with components including DynamoDB, S3, Kinesis Firehose, Lambda, and Amazon Managed Prometheus.
 ## Features
 **DynamoDB**: Stores metric-related data for downstream processing.
