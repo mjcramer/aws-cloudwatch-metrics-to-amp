@@ -8,11 +8,3 @@ This repository contains Terraform modules to deploy a modular and reusable metr
 **Lambda Function**: Processes metric streams and forwards them to Amazon Managed Prometheus.
 **Amazon Managed Prometheus**: Stores and visualizes metrics for observability and analysis.
 
-## Modules
-The project is broken into the following modular components for reusability:
-[DynamoDB Module](./dynamodb_module): Deploys a DynamoDB table for metric storage.
-[CloudWatch Metric Stream Module](./cloudwatch_metric_stream_module): Configures a CloudWatch Metric Stream to send metrics to Firehose.
-[Kinesis Firehose Module](./kinesis_firehose_module): Sets up a Firehose stream for metrics data.
-[S3 Module](./s3_module): Creates an S3 bucket to store the metrics.
-[Lambda Module](./lambda_module): Deploys a Lambda function to process metrics and send them to Prometheus.
-[Prometheus Module](./prometheus_module): Provisions an Amazon Managed Prometheus workspace.
