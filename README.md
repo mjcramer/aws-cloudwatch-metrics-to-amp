@@ -19,7 +19,7 @@ This architecture consists of the following key components:
    
 # AWS Lambda Handler for Kinesis Firehose Events
 
-This repository contains an AWS Lambda function written in Java that processes Kinesis Firehose events. The function extracts metrics from the event records and pushes them to a Prometheus PushGateway.
+This repository contains an AWS Lambda function written in Java that processes Kinesis Firehose events. The function extracts metrics from the event records and pushes them to a Prometheus remote write URL.
 
 ## Table of Contents
 
@@ -35,7 +35,7 @@ This repository contains an AWS Lambda function written in Java that processes K
 
 ## Overview
 
-This Lambda function processes Kinesis Firehose events containing metric data. For each record, it extracts metrics, creates Prometheus gauge metrics, and pushes these metrics to a Prometheus PushGateway.
+This Lambda function processes Kinesis Firehose events containing metric data. For each record, it extracts metrics, creates Prometheus gauge metrics, and pushes these metrics to a Prometheus remote write URL.
 
 ## Architecture
 
@@ -53,7 +53,7 @@ The main components of the Lambda function are:
 - Java 8 or higher
 - AWS CLI configured with appropriate permissions
 - AWS Lambda execution role with access to Kinesis Firehose and CloudWatch Logs
-- Prometheus PushGateway URL
+- Prometheus remote write URL
 
 ### Building the Project
 
@@ -75,14 +75,14 @@ The main components of the Lambda function are:
 1. Create a new Lambda function in the AWS Management Console.
 2. Upload the JAR file from the `target` directory.
 3. Set the handler to `com.example.LambdaHandler::handleRequest`.
-4. Configure the Lambda function with the necessary environment variables (e.g., Prometheus PushGateway URL).
+4. Configure the Lambda function with the necessary environment variables (e.g., Prometheus remote write URL).
 5. Set up a Kinesis Firehose delivery stream to trigger the Lambda function.
 
 ## Configuration
 
 ### Environment Variables
 
-- `PROMETHEUS_PUSHGATEWAY_URL`: The URL of the Prometheus PushGateway.
+- `PROMETHEUS_REMOTEWRITE_URL`: The URL of the Prometheus PushGateway.
 
 ### IAM Permissions
 
@@ -90,7 +90,7 @@ Ensure the Lambda execution role has the necessary permissions to access Kinesis
 
 ## Usage
 
-The Lambda function will automatically process incoming Kinesis Firehose events, extract metrics, and push them to the Prometheus PushGateway. The metrics include:
+The Lambda function will automatically process incoming Kinesis Firehose events, extract metrics, and push them to the Prometheus remote write URL. The metrics include:
 
 - Count
 - Sum
@@ -110,9 +110,6 @@ Unit tests can be run using Maven:
 ```sh
 mvn test
 ```
-   
-   
-   
 **Amazon Managed Service for Prometheus** 
    Provides monitoring and observability.
    
