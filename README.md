@@ -45,6 +45,8 @@ The main components of the Lambda function are:
 - **MetricStreamData**: A class representing the metric data extracted from the Kinesis Firehose event records.
 - **Value**: A class representing the metric values.
 - **KinesisFirehoseResponse**: A class representing the response to be sent back to Kinesis Firehose.
+- ![image](https://git.corp.adobe.com/storage/user/67828/files/a708bf6b-1556-408b-8626-e0c995701504)
+
 
 ## Setup and Deployment
 
