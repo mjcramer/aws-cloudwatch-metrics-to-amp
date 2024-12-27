@@ -4,6 +4,7 @@ This repository contains Terraform modules to deploy a modular and reusable metr
 
 ## Architecture Overview
 This architecture consists of the following key components:
+![image](https://git.corp.adobe.com/storage/user/67828/files/8b0476a3-d255-4f33-94b6-ed56d8ce525a)
 
 **Amazon DynamoDB** 
    Acts as the data source emitting metrics into the pipeline.
@@ -45,8 +46,6 @@ The main components of the Lambda function are:
 - **MetricStreamData**: A class representing the metric data extracted from the Kinesis Firehose event records.
 - **Value**: A class representing the metric values.
 - **KinesisFirehoseResponse**: A class representing the response to be sent back to Kinesis Firehose.
-
-![image](https://git.corp.adobe.com/storage/user/67828/files/bb295b36-0c57-43df-960c-1bdb17717876)
 
 
 
