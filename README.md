@@ -4,7 +4,9 @@ This repository contains Terraform modules to deploy a modular and reusable metr
 
 ## Architecture Overview
 This architecture consists of the following key components:
-![image](https://git.corp.adobe.com/storage/user/67828/files/984ba1f0-e680-4cfb-ba50-8effd866761d)
+
+![image](https://git.corp.adobe.com/storage/user/67828/files/f121a31c-3dfc-4676-a5f1-356a1ffad9f1)
+
 
 
 **Amazon DynamoDB** 
