@@ -4,7 +4,8 @@ This repository contains Terraform modules to deploy a modular and reusable metr
 
 ## Architecture Overview
 This architecture consists of the following key components:
-![image](https://git.corp.adobe.com/storage/user/67828/files/8b0476a3-d255-4f33-94b6-ed56d8ce525a)
+![image](https://git.corp.adobe.com/storage/user/67828/files/984ba1f0-e680-4cfb-ba50-8effd866761d)
+
 
 **Amazon DynamoDB** 
    Acts as the data source emitting metrics into the pipeline.
