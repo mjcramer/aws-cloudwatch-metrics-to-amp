@@ -18,6 +18,9 @@ This architecture consists of the following key components:
 **Amazon S3** 
    Stores processed metric data for archival or further analysis.
    
+**Amazon Managed Service for Prometheus** 
+   Provides monitoring and observability.
+   
 # AWS Lambda Handler for Kinesis Firehose Events
 
 This repository contains an AWS Lambda function written in Java that processes Kinesis Firehose events. The function extracts metrics from the event records and pushes them to a Prometheus remote write URL.
@@ -113,8 +116,6 @@ Unit tests can be run using Maven:
 ```sh
 mvn test
 ```
-**Amazon Managed Service for Prometheus** 
-   Provides monitoring and observability.
    
 **Terraform Modules** 
    All resources are provisioned using reusable Terraform modules.
