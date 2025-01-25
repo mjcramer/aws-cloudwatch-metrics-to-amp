@@ -69,10 +69,13 @@ The main components of the Lambda function are:
 1. Clone the repository:
 
    ```sh
-   git clone https://github.com/your-repo/aws-lambda-handler.git
-   cd aws-lambda-handler
+   git clone git@git.corp.adobe.com:experience-platform/cloudwatch-metrics-in-amp.git
+ 
    ```
 2. Build the project using Maven:
+
+```sh
+   mvn clean install
 
    ```sh
    mvn clean package
