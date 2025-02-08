@@ -1,0 +1,25 @@
+{
+  "metrics": [
+    {
+      "name": "request_count",
+      "labels": {
+        "method": "GET",
+        "status": "200",
+        "service": "api-gateway"
+      },
+      "value": 100,
+      "timestamp": 1672531200000
+    },
+    {
+      "name": "latency_seconds",
+      "labels": {
+        "method": "POST",
+        "status": "500",
+        "service": "auth-service"
+      },
+      "value": 1.23,
+      "timestamp": 1672531210000
+    }
+  ]
+}
+  
