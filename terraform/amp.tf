@@ -2,15 +2,15 @@
 
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/prometheus_workspace
 resource "aws_prometheus_workspace" "amp_workspace" {
-   alias = "cramer-1"
+  alias = "cramer-1"
 
-   logging_configuration {
-       log_group_arn = "${aws_cloudwatch_log_group.prometheus_logs.arn}:*"
-   }
+  logging_configuration {
+    log_group_arn = "${aws_cloudwatch_log_group.prometheus_logs.arn}:*"
+  }
 }
 
 resource "aws_cloudwatch_log_group" "prometheus_logs" {
-   name = "aws-managed-service-prometheus-complete"
+  name = "aws-managed-service-prometheus-complete"
 }
 
 # resource "aws_prometheus_alert_manager_definition" "alerts" {
