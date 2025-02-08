@@ -16,8 +16,6 @@ package prometheus;
 
 option go_package = "prompb";
 
-import "gogoproto/gogo.proto";
-
 message MetricMetadata {
   enum MetricType {
     UNKNOWN        = 0;
