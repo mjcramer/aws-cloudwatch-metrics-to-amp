@@ -50,6 +50,15 @@ resource "aws_cloudwatch_log_group" "kinesis_log_group" {
   }
 }
 
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group
+resource "aws_cloudwatch_log_group" "lambda_log_group" {
+  name              = "/aws/lambda/kinesis-to-amp"
+  retention_in_days = 14 # Retain logs for 14 days
+  tags = {
+    Environment = "Dev"
+  }
+}
+
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_stream
 resource "aws_cloudwatch_log_stream" "kinesis_log_stream" {
   name           = "kinesis-log-stream"

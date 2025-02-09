@@ -18,11 +18,27 @@ resource "aws_iam_role" "lambda_role" {
   assume_role_policy = data.aws_iam_policy_document.lambda_assume_role.json
 }
 
-# # IAM Policy Attachment for Lambda Role
-# resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
-#   role       = "arn:aws:iam::471112885190:role/lambda_execution_roleS"
-#   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-# }
+resource "aws_iam_policy" "lambda_policy" {
+  name        = "KTATestLambdaPolicy"
+  description = "Allows Lambda to write to Amazon Managed Prometheus"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = [
+        "aps:*"
+      ]
+      Resource = "*"
+    }]
+  })
+}
+
+# IAM Policy Attachment for Lambda Role
+resource "aws_iam_role_policy_attachment" "lambda" {
+  role       = aws_iam_role.lambda_role.id
+  policy_arn = aws_iam_policy.lambda_policy.arn
+}
 
 resource "aws_lambda_function" "kinesis_to_amp" {
   function_name    = "kinesis-to-amp"
@@ -35,7 +51,14 @@ resource "aws_lambda_function" "kinesis_to_amp" {
   environment {
     variables = {
       ENV = "Dev"
+      REGION = var.region
+      WORKSPACE_ID = aws_prometheus_workspace.amp_workspace.id
     }
+  }
+
+  logging_config {
+    log_format = "Text"
+    log_group = aws_cloudwatch_log_group.lambda_log_group.id
   }
 
   memory_size = 512 # Adjust memory size as per function requirements
