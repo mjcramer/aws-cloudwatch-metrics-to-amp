@@ -3,12 +3,11 @@ package com.example;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.KinesisFirehoseEvent;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.xerial.snappy.Snappy;
 import prometheus.Remote;
-import prometheus.Types.Label;
-import prometheus.Types.Sample;
-import prometheus.Types.TimeSeries;
+import prometheus.Types;
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.signer.Aws4Signer;
@@ -19,36 +18,22 @@ import software.amazon.awssdk.regions.Region;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
 import java.net.URI;
-import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import static com.example.AwsV4SigningUtils.*;
 
 
-public class KinesisToPrometheusLambda
-        implements RequestHandler<KinesisFirehoseEvent, KinesisToPrometheusLambda.KinesisFirehoseResponse> {
+public class KinesisToPrometheusLambda implements RequestHandler<KinesisFirehoseEvent, RecordProcessingResult> {
 
     private static final int MAX_BATCH_SIZE = 500;
     private static final int MAX_METRIC_NAME_LENGTH = 200;
     private static final int MAX_DIMENSION_VALUE_LENGTH = 100;
-
-//    private static final String AWS_ACCESS_KEY_ID = System.getenv("AWS_ACCESS_KEY_ID");
-//    private static final String AWS_SECRET_ACCESS_KEY = System.getenv("AWS_SECRET_ACCESS_KEY");
-//    private static final String X_API_KEY = System.getenv("X_API_KEY");
-//    private static final String RESTAPIHOST = System.getenv("RESTAPIHOST");
-//    private static final String RESTAPIPATH = System.getenv("RESTAPIPATH");
 
     private static final String METHOD = "POST";
     private static final String SERVICE = "aps";
@@ -64,11 +49,7 @@ public class KinesisToPrometheusLambda
     private final String restApiEndpoint;
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
-    private final Aws4Signer signer = Aws4Signer.create();
-    private final Aws4SignerParams signerParams;
     private final AwsSessionCredentials credentials;
-
-    // Create a datetime object for signing
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'", Locale.US);
 
 
@@ -78,108 +59,30 @@ public class KinesisToPrometheusLambda
         this.restApiHost = String.format("aps-workspaces.%s.amazonaws.com", awsRegion);
         this.restApiPath = String.format("/workspaces/%s/api/v1/remote_write", ampWorkspaceId);
         this.restApiEndpoint = String.format("https://%s%s", restApiHost, restApiPath);
-
-        System.out.println(restApiEndpoint);
-        credentials = (AwsSessionCredentials) DefaultCredentialsProvider.create().resolveCredentials();
-        System.out.println(credentials.accessKeyId());
-        System.out.println(credentials.secretAccessKey());
-        System.out.println(credentials.sessionToken());
-        signerParams = Aws4SignerParams.builder()
-                .awsCredentials(credentials)
-                .signingName("aps") // "aps" is the service name for AMP
-                .signingRegion(Region.of(awsRegion))
-                .build();
-
-        dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-
-    }
-
-//    private static final String STREAM_NAME = "your-kinesis-stream"; // Replace with your stream name
-//    private static final String WORKSPACE_ID = "ws-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"; // Your AMP workspace ID
-//    private static final String PROMETHEUS_URL =
-//
-//    private static final KinesisClient kinesisClient = KinesisClient.builder()
-//            .region(Region.of(REGION))
-//            .credentialsProvider(DefaultCredentialsProvider.create())
-//            .httpClient(ApacheHttpClient.create())
-//            .build();
-//
-//    public void handleRequest() {
-//        String shardIterator = getShardIterator();
-//        if (shardIterator != null) {
-//            List<Record> records = getRecords(shardIterator);
-//            for (Record record : records) {
-//                processRecord(record);
-//            }
-//        }
-//    }
-
-    public static class KinesisFirehoseResponse {
-        private List<Record> records;
-
-        public List<Record> getRecords() {
-            return records;
-        }
-
-        public void setRecords(List<Record> records) {
-            this.records = records;
-        }
-
-        public static class Record {
-            private String recordId;
-            private Result result;
-
-            public String getRecordId() {
-                return recordId;
-            }
-
-            public void setRecordId(String recordId) {
-                this.recordId = recordId;
-            }
-
-            public Result getResult() {
-                return result;
-            }
-
-            public void setResult(Result result) {
-                this.result = result;
-            }
-        }
-
-        public enum Result {
-            Ok, Dropped, ProcessingFailed
-        }
-    }
-
-    private String getRequiredEnvVar(String name) {
-        String value = System.getenv(name);
-        if (value == null || value.trim().isEmpty()) {
-            throw new IllegalStateException("Required environment variable missing: " + name);
-        }
-        return value;
+        this.credentials = (AwsSessionCredentials) DefaultCredentialsProvider.create().resolveCredentials();
+        this.dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
 
     @Override
-    public KinesisFirehoseResponse handleRequest(KinesisFirehoseEvent firehoseEvent, Context context) {
+    public RecordProcessingResult handleRequest(KinesisFirehoseEvent firehoseEvent, Context context) {
 
-        List<KinesisFirehoseResponse.Record> responseRecords = new ArrayList<>();
-
-//        List<MetricStreamData> batchMetrics = new ArrayList<>();
+        List<RecordProcessingResult.Record> responseRecords = new ArrayList<>();
+        List<MetricStreamData> batchMetrics = new ArrayList<>();
 //        for (KinesisFirehoseEvent.Record record : firehoseEvent.getRecords()) {
 //            context.getLogger().log(String.format("Received record %s", record.getRecordId()));
 //            try {
 //                MetricStreamData metricData = parseAndValidateRecord(record);
-//                context.getLogger().log(String.format("Parsed record in metric %s", metricData.metricName));
+//                context.getLogger().log(String.format("Parsed record in metric %s", metricData.getMetricName()));
 //                batchMetrics.add(metricData);
 //                if (batchMetrics.size() >= MAX_BATCH_SIZE) {
 //                    sendMetricBatch(batchMetrics, context);
 //                    batchMetrics.clear();
 //                }
-//                responseRecords.add(createSuccessResponse(record.getRecordId()));
+//                responseRecords.add(RecordProcessingResult.createSuccessResult(record.getRecordId()));
 //            // TODO: Code smell here, we shan't be catching all Exceptions and swallowing them
 //            } catch (Exception e) {
 //                context.getLogger().log("Error processing record: " + e.getMessage());
-//                responseRecords.add(createFailureResponse(record.getRecordId()));
+//                responseRecords.add(RecordProcessingResult.createFailureResult(record.getRecordId()));
 //            }
 //        }
 //
@@ -191,65 +94,72 @@ public class KinesisToPrometheusLambda
 //                context.getLogger().log("Error sending final batch: " + e.getMessage());
 //            }
 //        }
-        sendToPrometheus(1.23);
-        KinesisFirehoseResponse response = new KinesisFirehoseResponse();
+
+        try {
+            MetricStreamData.Value value = new MetricStreamData.Value();
+            value.setCount(1.23);
+            MetricStreamData data = new MetricStreamData();
+            data.setMetricStreamName("test_stream_name");
+            data.setMetricName("test_metric");
+            data.setTimestamp(Instant.now().toEpochMilli());
+            data.setValue(value);
+            batchMetrics.add(data);
+            sendMetricBatch(batchMetrics, context);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        RecordProcessingResult response = new RecordProcessingResult();
         response.setRecords(responseRecords);
         return response;
     }
 
-//    private MetricStreamData parseAndValidateRecord(KinesisFirehoseEvent.Record record) throws Exception {
-//        String data = new String(record.getData().array(), StandardCharsets.UTF_8);
-//        MetricStreamData metricData = objectMapper.readValue(data, MetricStreamData.class);
-//        if (metricData.getMetricName() == null || metricData.getMetricName().length() > MAX_METRIC_NAME_LENGTH) {
-//            throw new IllegalArgumentException("Invalid metric name");
-//        }
-//
-//        if (metricData.getDimensions() != null) {
-//            for (Map.Entry<String, String> dim : metricData.getDimensions().entrySet()) {
-//                if (dim.getValue().length() > MAX_DIMENSION_VALUE_LENGTH) {
-//                    throw new IllegalArgumentException("Dimension value too long: " + dim.getKey());
-//                }
-//            }
-//        }
-//        return metricData;
-//    }
-//
-//    private KinesisFirehoseResponse.Record createSuccessResponse(String recordId) {
-//        KinesisFirehoseResponse.Record response = new KinesisFirehoseResponse.Record();
-//        response.setRecordId(recordId);
-//        response.setResult(KinesisFirehoseResponse.Result.Ok);
-//        return response;
-//    }
-//
-//    private KinesisFirehoseResponse.Record createFailureResponse(String recordId) {
-//        KinesisFirehoseResponse.Record response = new KinesisFirehoseResponse.Record();
-//        response.setRecordId(recordId);
-//        response.setResult(KinesisFirehoseResponse.Result.ProcessingFailed);
-//        return response;
-//    }
+    private MetricStreamData parseAndValidateRecord(KinesisFirehoseEvent.Record record)
+            throws IllegalArgumentException, JsonProcessingException {
+        String data = new String(record.getData().array(), StandardCharsets.UTF_8);
+        MetricStreamData metricData = objectMapper.readValue(data, MetricStreamData.class);
+        if (metricData.getMetricName() == null || metricData.getMetricName().length() > MAX_METRIC_NAME_LENGTH) {
+            throw new IllegalArgumentException("Invalid metric name");
+        }
+        if (metricData.getDimensions() != null) {
+            for (Map.Entry<String, String> dim : metricData.getDimensions().entrySet()) {
+                if (dim.getValue().length() > MAX_DIMENSION_VALUE_LENGTH) {
+                    throw new IllegalArgumentException("Dimension value too long: " + dim.getKey());
+                }
+            }
+        }
+        return metricData;
+    }
 
+    private String getRequiredEnvVar(String name) {
+        String value = System.getenv(name);
+        if (value == null || value.trim().isEmpty()) {
+            throw new IllegalStateException("Required environment variable missing: " + name);
+        }
+        return value;
+    }
 
-    private void sendToPrometheus(double value) {
+    private void sendMetricBatch(List<MetricStreamData> metrics, Context context) throws Exception {
+        byte[] prometheusData = serializeToProto(metrics);
         try {
-            // Construct Protobuf payload
-            Remote.WriteRequest.Builder writeRequest = Remote.WriteRequest.newBuilder();
-            TimeSeries.Builder timeSeries = TimeSeries.newBuilder();
-            timeSeries.addLabels(Label.newBuilder()
-                    .setName("test_label_name")
-                    .setValue("test_label_value")
-            );
-
-            timeSeries.addSamples(Sample.newBuilder()
-                    .setValue(value)
-                    .setTimestamp(Instant.now().toEpochMilli())
-            );
-
-            writeRequest.addTimeseries(timeSeries.build());
-
-            // Convert to Protobuf binary
-            byte[] protobufData = writeRequest.build().toByteArray();
-            byte[] compressedData = Snappy.compress(protobufData);
-
+//            // Construct Protobuf payload
+//            Remote.WriteRequest.Builder writeRequest = Remote.WriteRequest.newBuilder();
+//            TimeSeries.Builder timeSeries = TimeSeries.newBuilder();
+//            timeSeries.addLabels(Label.newBuilder()
+//                    .setName("test_label_name")
+//                    .setValue("test_label_value")
+//            );
+//
+//            timeSeries.addSamples(Sample.newBuilder()
+//                    .setValue(value)
+//                    .setTimestamp(Instant.now().toEpochMilli())
+//            );
+//
+//            writeRequest.addTimeseries(timeSeries.build());
+//
+//            // Convert to Protobuf binary
+//            byte[] protobufData = writeRequest.build().toByteArray();
+            byte[] compressedData = Snappy.compress(prometheusData);
 
             String amzDate = dateFormat.format(new Date());
             String dateStamp = amzDate.substring(0,8);
@@ -281,7 +191,8 @@ public class KinesisToPrometheusLambda
                     canonicalQuerystring + "\n" +
                     canonicalHeaders + "\n" +
                     signedHeaders + "\n" +
-                    payloadHash;
+                    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+                    // payloadHash;
 
             System.out.printf("Canonical Request: '%s'\n", canonicalRequest.replace("\n", "\\n"));
 
@@ -309,8 +220,9 @@ public class KinesisToPrometheusLambda
 // content-type;host;x-amz-content-sha256;x-amz-date;x-api-key
 // e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 
-            String credentialScope = String.format("%s/%s/%s/aws4_request", dateStamp, awsRegion, SERVICE);
+// hash of empty string = e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 
+            String credentialScope = String.format("%s/%s/%s/aws4_request", dateStamp, awsRegion, SERVICE);
             String hashedCanonicalRequest = sha256Hex(canonicalRequest);
             String stringToSign =
                     ALGORITHM + "\n" +
@@ -339,7 +251,7 @@ public class KinesisToPrometheusLambda
             String authorizationHeader = String.format("%s Credential=%s/%s, SignedHeaders=%s, Signature=%s",
                     ALGORITHM, credentials.accessKeyId(), credentialScope, signedHeaders, signature);
 
-            System.out.printf("Sending data to prometheus at %s\n", restApiEndpoint);
+            System.out.printf("Sending %d bytes payload to prometheus at %s\n", compressedData.length, restApiEndpoint);
 
 //    *** Request Details ***
 //    Method: POST
@@ -365,8 +277,7 @@ public class KinesisToPrometheusLambda
                     .putHeader("content-type", CONTENT_TYPE)
                     .putHeader("x-prometheus-remote-write-version", "0.1.0")
                     .putHeader("Authorization", authorizationHeader)
-                    .contentStreamProvider(() ->
-                            AbortableInputStream.create(new ByteArrayInputStream(compressedData)))
+                    .contentStreamProvider(() -> new ByteArrayInputStream(compressedData))
                     .build();
 
             printRequest(sdkRequest);
@@ -383,6 +294,7 @@ public class KinesisToPrometheusLambda
                     )
                     .call();
 
+            int statusCode = response.httpResponse().statusCode();
             response.responseBody().map(stream -> {
                 try {
                     String body = new String(stream.readAllBytes(), Charset.defaultCharset());
@@ -392,11 +304,56 @@ public class KinesisToPrometheusLambda
                     throw new RuntimeException(e);
                 }
             });
-            System.out.printf("Metric %f sent to Prometheus: %s\n", value, response.httpResponse().statusCode());
+
+//            if (statusCode != 200) {
+//                String responseBody = new String(response.responseBody()
+//                        .orElseThrow(() -> new RuntimeException("No response body"))
+//                        .readAllBytes());
+//                throw new RuntimeException("Request failed with status: " + statusCode + ", body: " + responseBody);
+//            }
+
+            System.out.printf("%d metrics sent to Prometheus: %s\n", metrics.size(), statusCode);
 
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private byte[] serializeToProto(List<MetricStreamData> metrics) {
+        Types.TimeSeries.Builder timeSeries = Types.TimeSeries.newBuilder();
+        for (MetricStreamData metric : metrics) {
+            if (metric.getDimensions() != null) {
+                for (Map.Entry<String, String> dimension : metric.getDimensions().entrySet()) {
+                    timeSeries.addLabels(Types.Label.newBuilder()
+                        .setName(sanitize(dimension.getKey()))
+                        .setValue(dimension.getValue().replace("\"", "\\\""))
+                        .build());
+                }
+            }
+            timeSeries.addLabels(Types.Label.newBuilder()
+                .setName("metric_stream")
+                .setValue(metric.getMetricStreamName())
+            );
+            timeSeries.addSamples(Types.Sample.newBuilder()
+                    .setTimestamp(metric.getTimestamp())
+                    .setValue(metric.getValue().getCount())
+                    .build());
+        }
+
+        Types.MetricMetadata.Builder metadata = Types.MetricMetadata.newBuilder()
+                .setTypeValue(Types.MetricMetadata.MetricType.COUNTER_VALUE);
+        // Create a WriteRequest
+        Remote.WriteRequest writeRequest = Remote.WriteRequest.newBuilder()
+                .addTimeseries(timeSeries.build())
+                .addMetadata(metadata.build())
+                .build();
+
+        // Serialize to Protobuf
+        return writeRequest.toByteArray();
+    }
+
+    private String sanitize(String input) {
+        return input.replaceAll("[^a-zA-Z0-9_]", "_").toLowerCase();
     }
 
     private void printRequest(SdkHttpFullRequest signedRequest) throws IOException {
@@ -407,90 +364,6 @@ public class KinesisToPrometheusLambda
         signedRequest.headers().forEach((key, value) ->
                 System.out.printf("  - %s: %s\n", key, String.join(", ", value))
         );
-    }
-
-    private String formatAmzDate(Instant now) {
-        return DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'")
-                .withZone(ZoneOffset.UTC)
-                .format(now);
-    }
-
-    private String calculateSha256(byte[] content) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(content);
-            return Base64.getEncoder().encodeToString(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Failed to calculate SHA-256", e);
-        }
-    }
-
-//    public static byte[] formatMetricBatch(List<LambdaHandler.MetricStreamData> metrics) {
-//
-//        Types.TimeSeries.Builder timeSeries = Types.TimeSeries.newBuilder();
-//        for (LambdaHandler.MetricStreamData metric : metrics) {
-//            if (metric.getDimensions() != null) {
-//                for (Map.Entry<String, String> dimension : metric.getDimensions().entrySet()) {
-//                    timeSeries.addLabels(Types.Label.newBuilder()
-//                        .setName(sanitize(dimension.getKey()))
-//                        .setValue(dimension.getValue().replace("\"", "\\\""))
-//                        .build());
-//                }
-//            }
-//            timeSeries.addLabels(Types.Label.newBuilder()
-//                .setName("metric_stream")
-//                .setValue(metric.getMetricStreamName())
-//            );
-//            timeSeries.addSamples(Types.Sample.newBuilder()
-//                    .setTimestamp(metric.getTimestamp())
-//                    .setValue(metric.getValue().getCount())
-//                    .build());
-//        }
-//
-////        Types.MetricMetadata.Builder metricMetadata = Types.MetricMetadata.newBuilder()
-////                .setUnit()
-//        // Create a WriteRequest
-//        Remote.WriteRequest writeRequest = Remote.WriteRequest.newBuilder()
-//                .addTimeseries(timeSeries.build())
-//                .build();
-//
-//        // Serialize to Protobuf
-//        byte[] protobufData = writeRequest.toByteArray();
-//
-//
-//
-//        return protobufData;
-//    }
-//
-//
-//    private static String sanitize(String input) {
-//        return input.replaceAll("[^a-zA-Z0-9_]", "_").toLowerCase();
-//    }
-
-    private void sendMetricBatch(List<MetricStreamData> metrics, Context context) throws Exception {
-//        byte[] prometheusData = PrometheusFormatter.formatMetricBatch(metrics);
-//        String prometheusUrl = getRequiredEnvVar("PROMETHEUS_REMOTE_WRITE_URL");
-//        String roleArn = getRequiredEnvVar("AWS_AMP_ROLE_ARN");
-//        AwsCredentialsProvider credsProvider = sigV4Handler.getCredentialsProvider(roleArn);
-//        AwsCredentials creds = credsProvider.resolveCredentials();
-//        Sigv4Signer signer = new Sigv4Signer(
-//                creds.accessKeyId(),
-//                creds.secretAccessKey(),
-//                "x-api-key",
-//                URI.create(prometheusUrl));
-//        String body = signer.sendRequest(new String(prometheusData));
-//        HttpExecuteResponse response = sigV4Handler.send(URI.create(prometheusUrl), prometheusData);
-//        handleResponse(response);
-//    }
-//
-//    private void handleResponse(HttpExecuteResponse response) throws Exception {
-//        int statusCode = response.httpResponse().statusCode();
-//        if (statusCode != 200) {
-//            String responseBody = new String(response.responseBody()
-//                    .orElseThrow(() -> new RuntimeException("No response body"))
-//                    .readAllBytes());
-//            throw new RuntimeException("Request failed with status: " + statusCode + ", body: " + responseBody);
-//        }
     }
 }
 
