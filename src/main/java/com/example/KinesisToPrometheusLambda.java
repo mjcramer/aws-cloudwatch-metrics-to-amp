@@ -61,6 +61,10 @@ public class KinesisToPrometheusLambda implements RequestHandler<KinesisFirehose
         this.restApiEndpoint = String.format("https://%s%s", restApiHost, restApiPath);
         this.credentials = (AwsSessionCredentials) DefaultCredentialsProvider.create().resolveCredentials();
         this.dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+//        this.restApiHost = "localhost:9090";
+//        this.restApiPath = "/api/v1/write";
+//        this.restApiEndpoint = String.format("http://%s%s", restApiHost, restApiPath);
     }
 
     @Override
@@ -95,6 +99,7 @@ public class KinesisToPrometheusLambda implements RequestHandler<KinesisFirehose
 //            }
 //        }
 
+        // --- remove everything below when working
         try {
             MetricStreamData.Value value = new MetricStreamData.Value();
             value.setCount(1.23);
@@ -108,6 +113,7 @@ public class KinesisToPrometheusLambda implements RequestHandler<KinesisFirehose
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+        // --- remove everything above when working
 
         RecordProcessingResult response = new RecordProcessingResult();
         response.setRecords(responseRecords);
@@ -140,25 +146,8 @@ public class KinesisToPrometheusLambda implements RequestHandler<KinesisFirehose
     }
 
     private void sendMetricBatch(List<MetricStreamData> metrics, Context context) throws Exception {
-        byte[] prometheusData = serializeToProto(metrics);
         try {
-//            // Construct Protobuf payload
-//            Remote.WriteRequest.Builder writeRequest = Remote.WriteRequest.newBuilder();
-//            TimeSeries.Builder timeSeries = TimeSeries.newBuilder();
-//            timeSeries.addLabels(Label.newBuilder()
-//                    .setName("test_label_name")
-//                    .setValue("test_label_value")
-//            );
-//
-//            timeSeries.addSamples(Sample.newBuilder()
-//                    .setValue(value)
-//                    .setTimestamp(Instant.now().toEpochMilli())
-//            );
-//
-//            writeRequest.addTimeseries(timeSeries.build());
-//
-//            // Convert to Protobuf binary
-//            byte[] protobufData = writeRequest.build().toByteArray();
+            byte[] prometheusData = serializeToProto(metrics);
             byte[] compressedData = Snappy.compress(prometheusData);
 
             String amzDate = dateFormat.format(new Date());
@@ -167,6 +156,7 @@ public class KinesisToPrometheusLambda implements RequestHandler<KinesisFirehose
             // Create the canonical request
             String canonicalUri = restApiPath;
             String canonicalQuerystring = "";
+            String sha256HashOfEmptyString = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
             String payloadHash = sha256Hex(compressedData);
             // CanonicalHeaders:
@@ -178,47 +168,85 @@ public class KinesisToPrometheusLambda implements RequestHandler<KinesisFirehose
             // - "If the Content-Type header is present in the request, you must add it to the CanonicalHeaders list. "
             // - The last header is also \n terminated
             String canonicalHeaders =
+//                    "content-encoding: " + CONTENT_ENCODING + "\n" +
                     "content-type:" + CONTENT_TYPE + "\n" +
                     "host:" + restApiHost + "\n" +
                     "x-amz-content-sha256:" + payloadHash + "\n" +
                     "x-amz-date:" + amzDate + "\n" +
+                    "x-amz-security-token:" + credentials.sessionToken() + "\n" +
+//                    "x-prometheus-remote-write-version:0.1.0" + "\n";
                     "x-api-key:" + API_KEY + "\n";  // terminate last with \n
             String signedHeaders = "content-type;host;x-amz-content-sha256;x-amz-date;x-api-key";
+//            String signedHeaders = "content-encoding;content-type;host;x-amz-content-sha256;x-amz-date;x-amz-security-token;x-prometheus-remote-write-version";
 
+// The request signature we calculated does not match the signature you provided. Check your AWS Secret Access Key and signing method. Consult the service documentation for details.
+//
+// The Canonical String for this request should have been
+// 'POST
+// /workspaces/ws-102876bb-266b-4c7d-9270-5d2824b4885c/api/v1/remote_write
+//
+// content-type:application/x-protobuf
+// host:aps-workspaces.us-west-2.amazonaws.com
+// x-amz-content-sha256:d745fece628736044a89836a46c03b2b2d6a4a5b445440bcd4db681079eab55b
+// x-amz-date:20250210T214841Z
+// x-api-key:
+//
+// content-type;host;x-amz-content-sha256;x-amz-date;x-api-key
+// e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+//
+// The String-to-Sign should have been
+// 'AWS4-HMAC-SHA256
+// 20250210T214841Z
+// 20250210/us-west-2/aps/aws4_request
+// 8c458a52adaf08ddb70314ce18fba421a5c962e96924e3f0a6f708b678e0ae1c'
+            
             String canonicalRequest =
                     METHOD + "\n" +
                     canonicalUri + "\n" +
                     canonicalQuerystring + "\n" +
                     canonicalHeaders + "\n" +
                     signedHeaders + "\n" +
-                    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-                    // payloadHash;
+                    sha256HashOfEmptyString;
 
             System.out.printf("Canonical Request: '%s'\n", canonicalRequest.replace("\n", "\\n"));
 
-//  POST
-//  /workspaces/ws-209610ee-1c90-4030-818a-86ad165dbe50/api/v1/remote_write
-//
-//  content-type:application/x-protobuf
-//  host:aps-workspaces.us-west-2.amazonaws.com
-//  x-amz-content-sha256:a5b535cbc93028ed2bf15e3cdfd8e3d8d55b5e07eaeb6d9cfe7fb9374fda3c5f
-//  x-amz-date:20250209T040109Z
-//  x-api-key:
-//
-//  content-type;host;x-amz-content-sha256;x-amz-date;x-api-key
-//  a5b535cbc93028ed2bf15e3cdfd8e3d8d55b5e07eaeb6d9cfe7fb9374fda3c5f
-
-// POST
-// /workspaces/ws-209610ee-1c90-4030-818a-86ad165dbe50/api/v1/remote_write
+// Canonical Request:
+// 'POST
+// /workspaces/ws-102876bb-266b-4c7d-9270-5d2824b4885c/api/v1/remote_write
 //
 // content-type:application/x-protobuf
 // host:aps-workspaces.us-west-2.amazonaws.com
-// x-amz-content-sha256:a5b535cbc93028ed2bf15e3cdfd8e3d8d55b5e07eaeb6d9cfe7fb9374fda3c5f
-// x-amz-date:20250209T040109Z
+// x-amz-content-sha256:25ca89bc2374dd664ccc11b6478d377e4208e5bb3f90f9adbaabb0058e6669ca
+// x-amz-date:20250209T232749Z
 // x-api-key:
 //
 // content-type;host;x-amz-content-sha256;x-amz-date;x-api-key
-// e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+// 25ca89bc2374dd664ccc11b6478d377e4208e5bb3f90f9adbaabb0058e6669ca'
+
+// The Canonical String for this request should have been
+// 'POST
+// /workspaces/ws-102876bb-266b-4c7d-9270-5d2824b4885c/api/v1/remote_write
+//
+// content-type:application/x-protobuf
+// host:aps-workspaces.us-west-2.amazonaws.com
+// x-amz-content-sha256:25ca89bc2374dd664ccc11b6478d377e4208e5bb3f90f9adbaabb0058e6669ca
+// x-amz-date:20250210T181946Z
+// x-api-key:
+//
+// content-type;host;x-amz-content-sha256;x-amz-date;x-api-key
+// e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+
+// String to Sign:
+// 'AWS4-HMAC-SHA256
+// 20250209T232749Z
+// 20250209/us-west-2/aps/aws4_request
+// cdbde895095569533e4cbaa23abd70eb007803b10314c85ac5ea196daf316dc0'
+
+// The String-to-Sign should have been
+// 'AWS4-HMAC-SHA256
+// 20250209T232749Z
+// 20250209/us-west-2/aps/aws4_request
+// 88b6c6ae461d1d33b2a1d95ba77a46555e33ff6214b075cd1f89f0b72002ac88'
 
 // hash of empty string = e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 
@@ -230,19 +258,7 @@ public class KinesisToPrometheusLambda implements RequestHandler<KinesisFirehose
                     credentialScope + "\n" +
                     hashedCanonicalRequest;
 
-            System.out.printf("String to Sign: '%s'\n", stringToSign);
-
-// String to Sign:
-// 'AWS4-HMAC-SHA256
-// 20250209T040109Z
-// 20250209/us-west-2/aps/aws4_request
-// 3078753c3d67f6257b553408f34a3aa5116552b5ee384d470feb2ed8eb07701e
-
-// The String-to-Sign should have been
-// 'AWS4-HMAC-SHA256
-// 20250209T040109Z
-// 20250209/us-west-2/aps/aws4_request
-// 0abe036cf735cf8268dbad50f5cef4fda46d9fbfa8eba8f6a8d73b214889ecec
+            System.out.printf("String to Sign: '%s'\n", stringToSign.replace("\n", "\\n"));
 
             byte[] signingKey = getSignatureKey(credentials.secretAccessKey(), dateStamp, awsRegion, SERVICE);
             String signature = hmacSha256Hex(signingKey, stringToSign);
@@ -251,7 +267,7 @@ public class KinesisToPrometheusLambda implements RequestHandler<KinesisFirehose
             String authorizationHeader = String.format("%s Credential=%s/%s, SignedHeaders=%s, Signature=%s",
                     ALGORITHM, credentials.accessKeyId(), credentialScope, signedHeaders, signature);
 
-            System.out.printf("Sending %d bytes payload to prometheus at %s\n", compressedData.length, restApiEndpoint);
+//            System.out.printf("Sending %d bytes payload to prometheus at %s\n", compressedData.length, restApiEndpoint);
 
 //    *** Request Details ***
 //    Method: POST
@@ -265,6 +281,7 @@ public class KinesisToPrometheusLambda implements RequestHandler<KinesisFirehose
 //            - x-amz-date: 20250209T020908Z
 //            - x-amz-security-token: IQoJb3JpZ2luX2VjEIL//////////wEaCXVzLXdlc3QtMiJGMEQCIQDEoxihvmsbEUWIy5QvaoZ3bnZ4L48lpsrzasiGYA/mwQIfOttH71zn9NS7aM0RAE7J7s779oy5S8+V4kfD/QM1USr5Agib//////////8BEAAaDDI0MDI1OTk5NTU2NCIMwgcJ9DlgGR7CdBX3Ks0Cq07BTKJtM1MeZHz8tS48DuysGs9LnKw652vtz6ItF+/HPfWT3lYzMOiRMVVSVy26WZb3YWT/umstT2+l90QujXSdRiHp4JE8HeZoRPiCjofXntElML3k5Wo1tN7vL33//usGc7tJaMSur5tbmt2idV7n83Yj8jIA4oWBRjSFUBhdjKvaPMPxeWVZB6RV4v8Pr9dSlkmyTFDqIhfakrNK3d0NgAAfAzNZDWVKR5hrnj7GrboIszXRThM8tlEs9yyPHpgeZaUSmjT23LWd9/Km+4PzttYRhxD2dn0nyTKH2oRLMVnSxdrm3EgumCiACzxnQZn609GYXp6kPtYUXWDYp0MYnI6ru8cs1xsoP3dQXmjPdN1P3IV3dDBUCtiFWJw0tVqXjsVrkO3WByU99KXm0bEBns5slxQ12BI03fpfmYZTj//Fi9Tvv8TMOjXtMMGcoL0GOp8BVsbQwzV40kEI3CaqF/4RxMl5BPVh6mfiIXGSQ4ZMISPcEOwlbjfbR4muOrjH8l3yT0v7WWi5sWBf8qUrz4SsAUT1/3BzFp3QLIAwFFFjK0pr1xrL6QuUX7G76hBipt/ilihMkr/hXgvmduOG4Hw3arGfEqhYztd/v7/iLwqkAnpiPCk6AAhgQfCJVgos06LDlMzWHaUKCLQr4rj/JQ15
 //            - x-prometheus-remote-write-version: 0.1.0
+
 
             SdkHttpFullRequest sdkRequest = SdkHttpFullRequest.builder()
                     .method(SdkHttpMethod.POST)
@@ -364,6 +381,25 @@ public class KinesisToPrometheusLambda implements RequestHandler<KinesisFirehose
         signedRequest.headers().forEach((key, value) ->
                 System.out.printf("  - %s: %s\n", key, String.join(", ", value))
         );
+    }
+
+    public static void main(String[] args) {
+        KinesisToPrometheusLambda lambda = new KinesisToPrometheusLambda();
+        List<MetricStreamData> batchMetrics = new ArrayList<>();
+
+        try {
+            MetricStreamData.Value value = new MetricStreamData.Value();
+            value.setCount(1.23);
+            MetricStreamData data = new MetricStreamData();
+            data.setMetricStreamName("test_stream_name");
+            data.setMetricName("test_metric");
+            data.setTimestamp(Instant.now().toEpochMilli());
+            data.setValue(value);
+            batchMetrics.add(data);
+            lambda.sendMetricBatch(batchMetrics, null);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }
 
