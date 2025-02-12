@@ -1,0 +1,53 @@
+{
+  "version": "0",
+  "id": "abcdef12-3456-789a-bcde-f0123456789a",
+  "detail-type": "CloudWatch Metrics",
+  "source": "aws.cloudwatch",
+  "account": "123456789012",
+  "time": "2025-02-11T12:34:56Z",
+  "region": "us-east-1",
+  "resources": [],
+  "detail": {
+    "metrics": [
+      {
+        "Namespace": "AWS/DynamoDB",
+        "MetricName": "ConsumedReadCapacityUnits",
+        "Dimensions": [
+          {
+            "Name": "TableName",
+            "Value": "my-dynamodb-table"
+          }
+        ],
+        "Value": 5.0,
+        "Unit": "Count",
+        "Timestamp": 1739321027
+      },
+      {
+        "Namespace": "AWS/DynamoDB",
+        "MetricName": "ConsumedWriteCapacityUnits",
+        "Dimensions": [
+          {
+            "Name": "TableName",
+            "Value": "my-dynamodb-table"
+          }
+        ],
+        "Value": 10.0,
+        "Unit": "Count",
+        "Timestamp": 1739321030
+      },
+      {
+        "Namespace": "AWS/DynamoDB",
+        "MetricName": "SuccessfulRequestLatency",
+        "Dimensions": [
+          {
+            "Name": "TableName",
+            "Value": "my-dynamodb-table"
+          }
+        ],
+        "Value": 15.3,
+        "Unit": "Milliseconds",
+        "Timestamp": 1739321040
+      }
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+# Intellij
+.idea
+*.iml
+
+# Java
+**/target
+**/*.class
+**/*.jar
+hs_err_pid*
+
+# Terraform
+**/.terraform
+**/.terraform.lock.hcl
+**/terraform.tfstate*
+
+# General 
+**/*.log
+**/*.zip
+
+# Python
+__pycache__
+*.iml
+*_pb2.py
+python
