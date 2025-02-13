@@ -1,54 +1,57 @@
 
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document
+data "aws_iam_policy_document" "firehose_assume_role" {
+  statement {
+    effect = "Allow"
+    actions = ["sts:AssumeRole"]
 
-# # 🔹 IAM Role for Firehose
-# resource "aws_iam_role" "firehose_role" {
-#   name = "firehose_delivery_role"
-#
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [
-#       {
-#         Effect = "Allow"
-#         Principal = {
-#           Service = "firehose.amazonaws.com"
-#         }
-#         Action = "sts:AssumeRole"
-#       }
-#     ]
-#   })
-# }
-#
-# # 🔹 IAM Policy for Firehose
-# resource "aws_iam_policy" "firehose_policy" {
-#   name        = "firehose_s3_policy"
-#   description = "Allows Firehose to write to S3"
-#
-#   policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [
-#       {
-#         Effect = "Allow"
-#         Action = [
-#           "s3:PutObject",
-#           "s3:GetBucketLocation",
-#           "s3:ListBucket"
-#         ]
-#         Resource = [
-#           aws_s3_bucket.firehose_bucket.arn,
-#           "${aws_s3_bucket.firehose_bucket.arn}/*"
-#         ]
-#       }
-#     ]
-#   })
-# }
+    principals {
+      type        = "Service"
+      identifiers = [
+        "firehose.amazonaws.com"
+      ]
+    }
+  }
+}
 
-# # 🔹 Attach IAM Policy to Role
-# resource "aws_iam_role_policy_attachment" "firehose_policy_attach" {
-#   role       = aws_iam_role.firehose_role.name
-#   policy_arn = aws_iam_policy.firehose_policy.arn
-# }
-#resource "aws_iam_policy" "kinesis_access_policy" {
-#  name        = "KinesisAccessPolicy"
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role
+resource "aws_iam_role" "firehose_role" {
+  name               = "${upper(var.prefix)}FirehoseRole"
+  assume_role_policy = data.aws_iam_policy_document.firehose_assume_role.json
+}
+
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy
+resource "aws_iam_policy" "firehose_policy" {
+  name        = "firehose_s3_policy"
+  description = "Allows Firehose to write to S3"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetBucketLocation",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.metrics_bucket.arn,
+          "${aws_s3_bucket.metrics_bucket.arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+# 🔹 Attach IAM Policy to Role
+resource "aws_iam_role_policy_attachment" "firehose_policy_attach" {
+  role       = aws_iam_role.firehose_role.name
+  policy_arn = aws_iam_policy.firehose_policy.arn
+}
+
+# resource "aws_iam_policy" "kinesis_access_policy" {
+#  name        = "${upper(var.prefix)}Kinesis"
 #  description = "Policy to allow Kinesis stream operations and CloudWatch logging"
 #  policy      = jsonencode({
 #    Version = "2012-10-17",
@@ -92,52 +95,8 @@
 #      }
 #    ]
 #  })
-#}
-
-
-
-# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role
-# resource "aws_iam_role" "kinesis_to_amp_role" {
-#   name               = "KinesisToAmpRole"
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17",
-#     Statement = [
-#       {
-#         Action = "sts:AssumeRole",
-#         Effect = "Allow",
-#         Principal = {
-#           Service = "lambda.amazonaws.com"
-#         }
-#       }
-#     ]
-#   })
 # }
 #
-# # IAM Policy Attachment for Lambda Role
-# resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
-#   role       = "arn:aws:iam::471112885190:role/lambda_execution_roleS"
-#   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-# }
-
-data "aws_iam_policy_document" "firehose_assume_role" {
-  statement {
-    effect = "Allow"
-
-    principals {
-      type        = "Service"
-      identifiers = ["firehose.amazonaws.com"]
-    }
-
-    actions = ["sts:AssumeRole"]
-  }
-}
-
-# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role
-resource "aws_iam_role" "firehose_role" {
-  name               = "${upper(var.prefix)}FirehoseRole"
-  assume_role_policy = data.aws_iam_policy_document.firehose_assume_role.json
-}
-
 
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kinesis_stream
 resource "aws_kinesis_stream" "metrics" {
@@ -164,6 +123,11 @@ resource "aws_cloudwatch_log_stream" "metric_delivery_stream_logs" {
 resource "aws_kinesis_firehose_delivery_stream" "metrics" {
   name        = "${var.prefix}-metrics"
   destination = "extended_s3"
+
+  kinesis_source_configuration {
+    kinesis_stream_arn = aws_kinesis_stream.metrics.arn
+    role_arn           = aws_iam_role.firehose_role.arn
+  }
 
   extended_s3_configuration {
     role_arn           = aws_iam_role.firehose_role.arn
@@ -206,4 +170,72 @@ resource "aws_kinesis_firehose_delivery_stream" "metrics" {
   #     key_type = var.sse_key_type # can be "AWS_OWNED_CMK" or "CUSTOMER_MANAGED_CMK"
   #   }
 }
+
+#
+## Kinesis Firehose Delivery Stream
+## resource "aws_kinesis_firehose_delivery_stream" "firehose_stream" {
+##   name        = "cloudwatch-metric-stream"
+##   destination = "extended_s3"
+##   extended_s3_configuration {
+##     role_arn   = "arn:aws:iam::471112885190:role/cloudwatch_metric_stream_role"
+##     bucket_arn = "arn:aws:s3:::adobe-secure-metrics-data"
+##   }
+## }
+## CloudWatch Metric Stream for DynamoDB Metrics
+#resource "aws_cloudwatch_metric_stream" "dynamodb_metric_stream" {
+#  name          = "dynamodb-metric-stream"
+#  role_arn      = "arn:aws:iam::471112885190:role/cloudwatch_metric_stream_role"
+#  firehose_arn  = "arn:aws:firehose:us-east-1:471112885190:deliverystream/KDS-S3-oBr67"
+#  output_format = "json"
+#  # Include specific DynamoDB metrics
+#  include_filter {
+#    namespace = "AWS/DynamoDB"
+#    metric_names = [
+#      "ConditionalCheckFailedRequests",
+#      "ConsumedReadCapacityUnits",
+#      "ConsumedWriteCapacityUnits",
+#      "ReadThrottleEvents",
+#      "ReturnedBytes",
+#      "ReturnedItemCount",
+#      "ReturnedRecordsCount",
+#      "SuccessfulRequestLatency",
+#      "SystemErrors",
+#      "TimeToLiveDeletedItemCount",
+#      "ThrottledRequests",
+#      "UserErrors",
+#      "WriteThrottleEvents",
+#      "OnDemandMaxReadRequestUnits",
+#      "OnDemandMaxWriteRequestUnits",
+#      "AccountMaxReads",
+#      "AccountMaxTableLevelReads",
+#      "AccountMaxTableLevelWrites",
+#      "AccountMaxWrites",
+#      "ThrottledPutRecordCount"
+#    ]
+#  }
+#}
+## Alarm for ThrottledRequests
+#resource "aws_cloudwatch_metric_alarm" "throttled_requests" {
+#alarm_name          = "dynamodb-throttled-requests"
+#comparison_operator = "GreaterThanThreshold"
+#evaluation_periods  = 1
+#metric_name         = "ThrottledRequests"
+#namespace           = "AWS/DynamoDB"
+#period              = 60
+#statistic           = "Sum"
+#threshold           = 5
+#alarm_description   = "Triggers when throttled requests exceed 5."
+#}
+## Alarm for SystemErrors
+#resource "aws_cloudwatch_metric_alarm" "system_errors" {
+#alarm_name          = "dynamodb-system-errors"
+#comparison_operator = "GreaterThanThreshold"
+#evaluation_periods  = 1
+#metric_name         = "SystemErrors"
+#namespace           = "AWS/DynamoDB"
+#period              = 60
+#statistic           = "Sum"
+#threshold           = 1
+#alarm_description   = "Triggers when system errors occur."
+#}
 

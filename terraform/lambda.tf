@@ -1,4 +1,5 @@
 
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document
 data "aws_iam_policy_document" "lambda_assume_role" {
   statement {
     effect = "Allow"
@@ -14,7 +15,7 @@ data "aws_iam_policy_document" "lambda_assume_role" {
 
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role
 resource "aws_iam_role" "lambda_role" {
-  name               = "KtaTestLambdaRole"
+  name               = "${upper(var.prefix)}LambdaRole"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume_role.json
 }
 
