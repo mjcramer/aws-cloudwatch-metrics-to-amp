@@ -1,0 +1,205 @@
+{
+    "metrics-dynamodb-table": [
+      {
+        "PutRequest": {
+          "Item": {
+            "metric_id": {"S": "1"},
+            "MetricName": {"S": "ConditionalCheckFailedRequests"},
+            "Value": {"N": "3"},
+            "Timestamp": {"S": "2025-02-12T14:00:00Z"}
+          }
+        }
+      },
+      {
+        "PutRequest": {
+          "Item": {
+            "metric_id": {"S": "2"},
+            "MetricName": {"S": "ConsumedReadCapacityUnits"},
+            "Value": {"N": "250"},
+            "Timestamp": {"S": "2025-02-12T14:01:00Z"}
+          }
+        }
+      },
+      {
+        "PutRequest": {
+          "Item": {
+            "metric_id": {"S": "3"},
+            "MetricName": {"S": "ConsumedWriteCapacityUnits"},
+            "Value": {"N": "500"},
+            "Timestamp": {"S": "2025-02-12T14:02:00Z"}
+          }
+        }
+      },
+      {
+        "PutRequest": {
+          "Item": {
+            "metric_id": {"S": "4"},
+            "MetricName": {"S": "ReadThrottleEvents"},
+            "Value": {"N": "5"},
+            "Timestamp": {"S": "2025-02-12T14:03:00Z"}
+          }
+        }
+      },
+      {
+        "PutRequest": {
+          "Item": {
+            "metric_id": {"S": "5"},
+            "MetricName": {"S": "ReturnedBytes"},
+            "Value": {"N": "20480"},
+            "Timestamp": {"S": "2025-02-12T14:04:00Z"}
+          }
+        }
+      },
+      {
+        "PutRequest": {
+          "Item": {
+            "metric_id": {"S": "6"},
+            "MetricName": {"S": "ReturnedItemCount"},
+            "Value": {"N": "30"},
+            "Timestamp": {"S": "2025-02-12T14:05:00Z"}
+          }
+        }
+      },
+      {
+        "PutRequest": {
+          "Item": {
+            "metric_id": {"S": "7"},
+            "MetricName": {"S": "ReturnedRecordsCount"},
+            "Value": {"N": "40"},
+            "Timestamp": {"S": "2025-02-12T14:06:00Z"}
+          }
+        }
+      },
+      {
+        "PutRequest": {
+          "Item": {
+            "metric_id": {"S": "8"},
+            "MetricName": {"S": "SuccessfulRequestLatency"},
+            "Value": {"N": "120"},
+            "Timestamp": {"S": "2025-02-12T14:07:00Z"}
+          }
+        }
+      },
+      {
+        "PutRequest": {
+          "Item": {
+            "metric_id": {"S": "9"},
+            "MetricName": {"S": "SystemErrors"},
+            "Value": {"N": "2"},
+            "Timestamp": {"S": "2025-02-12T14:08:00Z"}
+          }
+        }
+      },
+      {
+        "PutRequest": {
+          "Item": {
+            "metric_id": {"S": "10"},
+            "MetricName": {"S": "TimeToLiveDeletedItemCount"},
+            "Value": {"N": "5"},
+            "Timestamp": {"S": "2025-02-12T14:09:00Z"}
+          }
+        }
+      },
+      {
+        "PutRequest": {
+          "Item": {
+            "metric_id": {"S": "11"},
+            "MetricName": {"S": "ThrottledRequests"},
+            "Value": {"N": "10"},
+            "Timestamp": {"S": "2025-02-12T14:10:00Z"}
+          }
+        }
+      },
+      {
+        "PutRequest": {
+          "Item": {
+            "metric_id": {"S": "12"},
+            "MetricName": {"S": "UserErrors"},
+            "Value": {"N": "1"},
+            "Timestamp": {"S": "2025-02-12T14:11:00Z"}
+          }
+        }
+      },
+      {
+        "PutRequest": {
+          "Item": {
+            "metric_id": {"S": "13"},
+            "MetricName": {"S": "WriteThrottleEvents"},
+            "Value": {"N": "4"},
+            "Timestamp": {"S": "2025-02-12T14:12:00Z"}
+          }
+        }
+      },
+      {
+        "PutRequest": {
+          "Item": {
+            "metric_id": {"S": "14"},
+            "MetricName": {"S": "OnDemandMaxReadRequestUnits"},
+            "Value": {"N": "1000"},
+            "Timestamp": {"S": "2025-02-12T14:13:00Z"}
+          }
+        }
+      },
+      {
+        "PutRequest": {
+          "Item": {
+            "metric_id": {"S": "15"},
+            "MetricName": {"S": "OnDemandMaxWriteRequestUnits"},
+            "Value": {"N": "2000"},
+            "Timestamp": {"S": "2025-02-12T14:14:00Z"}
+          }
+        }
+      },
+      {
+        "PutRequest": {
+          "Item": {
+            "metric_id": {"S": "16"},
+            "MetricName": {"S": "AccountMaxReads"},
+            "Value": {"N": "5000"},
+            "Timestamp": {"S": "2025-02-12T14:15:00Z"}
+          }
+        }
+      },
+      {
+        "PutRequest": {
+          "Item": {
+            "metric_id": {"S": "17"},
+            "MetricName": {"S": "AccountMaxTableLevelReads"},
+            "Value": {"N": "10000"},
+            "Timestamp": {"S": "2025-02-12T14:16:00Z"}
+          }
+        }
+      },
+      {
+        "PutRequest": {
+          "Item": {
+            "metric_id": {"S": "18"},
+            "MetricName": {"S": "AccountMaxTableLevelWrites"},
+            "Value": {"N": "15000"},
+            "Timestamp": {"S": "2025-02-12T14:17:00Z"}
+          }
+        }
+      },
+      {
+        "PutRequest": {
+          "Item": {
+            "metric_id": {"S": "19"},
+            "MetricName": {"S": "AccountMaxWrites"},
+            "Value": {"N": "20000"},
+            "Timestamp": {"S": "2025-02-12T14:18:00Z"}
+          }
+        }
+      },
+      {
+        "PutRequest": {
+          "Item": {
+            "metric_id": {"S": "20"},
+            "MetricName": {"S": "ThrottledPutRecordCount"},
+            "Value": {"N": "6"},
+            "Timestamp": {"S": "2025-02-12T14:19:00Z"}
+          }
+        }
+      }
+    ]
+  }
+  
