@@ -29,7 +29,7 @@ import java.util.*;
 import static com.adobe.aep.metrics.AwsV4SigningUtils.*;
 
 
-public class KinesisToPrometheusLambda implements RequestHandler<KinesisFirehoseEvent, RecordProcessingResult> {
+public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehoseEvent, FirehoseEventProcessingResult> {
 
     private static final int MAX_BATCH_SIZE = 500;
     private static final int MAX_METRIC_NAME_LENGTH = 200;
@@ -52,14 +52,14 @@ public class KinesisToPrometheusLambda implements RequestHandler<KinesisFirehose
     private final AwsSessionCredentials credentials;
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'", Locale.US);
 
-    private final Logger logger = LoggerFactory.getLogger(KinesisToPrometheusLambda.class);
+    private final Logger logger = LoggerFactory.getLogger(CloudWatchMetricsAmpWriter.class);
 
 
-    public KinesisToPrometheusLambda() {
+    public CloudWatchMetricsAmpWriter() {
         this(false);
     }
 
-    public KinesisToPrometheusLambda(Boolean testMode) {
+    public CloudWatchMetricsAmpWriter(Boolean testMode) {
         if (testMode) {
             this.awsRegion = null;
             this.ampWorkspaceId = null;
@@ -81,14 +81,14 @@ public class KinesisToPrometheusLambda implements RequestHandler<KinesisFirehose
     }
 
     @Override
-    public RecordProcessingResult handleRequest(KinesisFirehoseEvent firehoseEvent, Context context) {
+    public FirehoseEventProcessingResult handleRequest(KinesisFirehoseEvent firehoseEvent, Context context) {
 //        logger.debug("Lambda function invoked with event ");
 //        logger.debug("Event: {}", firehoseEvent);
 //
 //        LambdaLogger lambdaLogger = context.getLogger();
 //        lambdaLogger.log("Lambda function logging using context.getLogger()");
 
-        List<RecordProcessingResult.Record> responseRecords = new ArrayList<>();
+        List<FirehoseEventProcessingResult.Record> responseRecords = new ArrayList<>();
         List<CloudWatchRecord.Metric> batchMetrics = new ArrayList<>();
         for (KinesisFirehoseEvent.Record record : firehoseEvent.getRecords()) {
             context.getLogger().log(String.format("Received record %s", record.getRecordId()));
@@ -105,20 +105,20 @@ public class KinesisToPrometheusLambda implements RequestHandler<KinesisFirehose
                         batchMetrics.clear();
                     }
                 }
-                responseRecords.add(RecordProcessingResult.createSuccessResult(record.getRecordId()));
+                responseRecords.add(FirehoseEventProcessingResult.createSuccessResult(record.getRecordId()));
                 // TODO: Code smell here, we shan't be catching all Exceptions and swallowing them
             }
             catch (JsonProcessingException e) {
                 context.getLogger().log("Error processing record: " + e.getMessage());
-                responseRecords.add(RecordProcessingResult.createFailureResult(record.getRecordId()));
+                responseRecords.add(FirehoseEventProcessingResult.createFailureResult(record.getRecordId()));
             }
             catch (IOException e) {
                 context.getLogger().log("Error sending data to amp: " + e.getMessage());
-                responseRecords.add(RecordProcessingResult.createFailureResult(record.getRecordId()));
+                responseRecords.add(FirehoseEventProcessingResult.createFailureResult(record.getRecordId()));
             }
             catch (NoSuchAlgorithmException e) {
                 context.getLogger().log("Error encoding data for sending: " + e.getMessage());
-                responseRecords.add(RecordProcessingResult.createFailureResult(record.getRecordId()));
+                responseRecords.add(FirehoseEventProcessingResult.createFailureResult(record.getRecordId()));
             }
         }
 
@@ -145,7 +145,7 @@ public class KinesisToPrometheusLambda implements RequestHandler<KinesisFirehose
 //            throw new RuntimeException(e);
 //        }
 
-        RecordProcessingResult response = new RecordProcessingResult();
+        FirehoseEventProcessingResult response = new FirehoseEventProcessingResult();
         response.setRecords(responseRecords);
         return response;
     }

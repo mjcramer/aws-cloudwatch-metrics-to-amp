@@ -3,9 +3,9 @@ package com.adobe.aep.metrics;
 import java.util.List;
 
 
-public class RecordProcessingResult {
+public class FirehoseEventProcessingResult {
 
-    private List<RecordProcessingResult.Record> records;
+    private List<FirehoseEventProcessingResult.Record> records;
 
     public List<Record> getRecords() {
         return records;
@@ -43,7 +43,7 @@ public class RecordProcessingResult {
     public static Record createSuccessResult(String recordId) {
         Record response = new Record();
         response.setRecordId(recordId);
-        response.setResult(RecordProcessingResult.Result.Ok);
+        response.setResult(FirehoseEventProcessingResult.Result.Ok);
         return response;
     }
 
