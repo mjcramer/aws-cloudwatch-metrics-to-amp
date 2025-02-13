@@ -1,8 +1,8 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://m.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>com.example</groupId>
-    <artifactId>kinesis-to-amp</artifactId>
+    <groupId>com.adobe.aep.metrics</groupId>
+    <artifactId>cloudwatch-metrics-amp-writer</artifactId>
     <version>1.0</version>
 
     <properties>
@@ -163,7 +163,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <mainClass>com.adobe.aep.metrics.KinesisToPrometheusLambda</mainClass>
+                    <mainClass>com.adobe.aep.metrics.CloudWatchMetricsAmpWriter</mainClass>
                     <systemProperties>
                         <systemProperty>
                             <key>REGION</key>
