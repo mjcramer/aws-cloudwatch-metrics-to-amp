@@ -1,19 +1,27 @@
 
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document
+data "aws_iam_policy_document" "metric_stream_assume_role" {
+  statement {
+    effect = "Allow"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = [
+        "streams.metrics.cloudwatch.amazonaws.com"
+      ]
+    }
+  }
+}
+
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role
 resource "aws_iam_role" "metric_stream" {
-  name = "cloudwatch_metric_stream_role"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect    = "Allow",
-      Principal = { Service = "streams.metrics.cloudwatch.amazonaws.com" },
-      Action    = "sts:AssumeRole"
-    }]
-  })
+  name = "${title(var.prefix)}CloudWatchMetricsStreamRole"
+  assume_role_policy = data.aws_iam_policy_document.metric_stream_assume_role.json
 }
 
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document
-data "aws_iam_policy_document" "metric_stream_role_assume_role_policy" {
+data "aws_iam_policy_document" "metric_stream_policy" {
   statement {
     effect  = "Allow"
     actions = [
@@ -28,16 +36,10 @@ data "aws_iam_policy_document" "metric_stream_role_assume_role_policy" {
 
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy
 resource "aws_iam_role_policy" "metric_stream_policy" {
-  name   = "CloudWatchMetricStream"
+  name   = "${title(var.prefix)}CloudWatchMetricStreamPolicy"
   role   = aws_iam_role.metric_stream.name
-  policy = data.aws_iam_policy_document.metric_stream_role_assume_role_policy.json
+  policy = data.aws_iam_policy_document.metric_stream_policy.json
 }
-
-# # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_stream
-# resource "aws_cloudwatch_log_stream" "metric_stream" {
-#   name           = "${var.prefix}-metric-stream-logs"
-#   log_group_name = aws_cloudwatch_log_group.project_logs.name
-# }
 
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_stream
 resource "aws_cloudwatch_metric_stream" "metric_stream" {
@@ -73,6 +75,7 @@ resource "aws_cloudwatch_metric_stream" "metric_stream" {
   }
 }
 
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm
 resource "aws_cloudwatch_metric_alarm" "throttled_requests" {
   alarm_name          = "${var.prefix}-throttled-requests"
   comparison_operator = "GreaterThanThreshold"
@@ -85,6 +88,7 @@ resource "aws_cloudwatch_metric_alarm" "throttled_requests" {
   alarm_description   = "Triggers when throttled requests exceed 5."
 }
 
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm
 resource "aws_cloudwatch_metric_alarm" "system_errors" {
   alarm_name          = "${var.prefix}-system-errors"
   comparison_operator = "GreaterThanThreshold"

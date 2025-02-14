@@ -54,39 +54,18 @@ public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehos
 
     private final Logger logger = LoggerFactory.getLogger(CloudWatchMetricsAmpWriter.class);
 
-
     public CloudWatchMetricsAmpWriter() {
-        this(false);
-    }
-
-    public CloudWatchMetricsAmpWriter(Boolean testMode) {
-        if (testMode) {
-            this.awsRegion = null;
-            this.ampWorkspaceId = null;
-            this.restApiHost = "localhost:9090";
-            this.restApiPath = "/api/v1/write";
-            this.restApiEndpoint = String.format("http://%s%s", restApiHost, restApiPath);
-            this.credentials = null;
-            this.dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-        } else {
-            this.awsRegion = getRequiredEnvVar("REGION");
-            this.ampWorkspaceId = getRequiredEnvVar("WORKSPACE_ID");
-            this.restApiHost = String.format("aps-workspaces.%s.amazonaws.com", awsRegion);
-            this.restApiPath = String.format("/workspaces/%s/api/v1/remote_write", ampWorkspaceId);
-            this.restApiEndpoint = String.format("https://%s%s", restApiHost, restApiPath);
-            this.credentials = (AwsSessionCredentials) DefaultCredentialsProvider.create().resolveCredentials();
-            this.dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-
-        }
+        this.awsRegion = getRequiredEnvVar("REGION");
+        this.ampWorkspaceId = getRequiredEnvVar("WORKSPACE_ID");
+        this.restApiHost = String.format("aps-workspaces.%s.amazonaws.com", awsRegion);
+        this.restApiPath = String.format("/workspaces/%s/api/v1/remote_write", ampWorkspaceId);
+        this.restApiEndpoint = String.format("https://%s%s", restApiHost, restApiPath);
+        this.credentials = (AwsSessionCredentials) DefaultCredentialsProvider.create().resolveCredentials();
+        this.dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
 
     @Override
     public FirehoseEventProcessingResult handleRequest(KinesisFirehoseEvent firehoseEvent, Context context) {
-//        logger.debug("Lambda function invoked with event ");
-//        logger.debug("Event: {}", firehoseEvent);
-//
-//        LambdaLogger lambdaLogger = context.getLogger();
-//        lambdaLogger.log("Lambda function logging using context.getLogger()");
 
         List<FirehoseEventProcessingResult.Record> responseRecords = new ArrayList<>();
         List<CloudWatchMetric> batchMetrics = new ArrayList<>();
@@ -95,8 +74,8 @@ public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehos
             String recordData = new String(record.getData().array(), StandardCharsets.UTF_8);
             context.getLogger().log(String.format("Record data: %s", recordData));
             try {
-                CloudWatchMetric metric = objectMapper.readValue(recordData, CloudWatchMetric.class);
-                for (CloudWatchMetric metric : metricRecord.detail.metrics) {
+                for (String metricData : recordData.split("\n\n")) {
+                    CloudWatchMetric metric = objectMapper.readValue(metricData, CloudWatchMetric.class);
                     context.getLogger().log(String.format("Parsed record in metric %s", metric.metricName));
                     batchMetrics.add(metric);
                     if (batchMetrics.size() >= MAX_BATCH_SIZE) {
@@ -105,20 +84,19 @@ public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehos
                     }
                 }
                 responseRecords.add(FirehoseEventProcessingResult.createSuccessResult(record.getRecordId()));
-                // TODO: Code smell here, we shan't be catching all Exceptions and swallowing them
             }
             catch (JsonProcessingException e) {
                 context.getLogger().log("Error processing record: " + e.getMessage());
-                responseRecords.add(FirehoseEventProcessingResult.createFailureResult(record.getRecordId()));
+                responseRecords.add(FirehoseEventProcessingResult.createFailureResult(record.getRecordId(), e.getMessage()));
             }
-//            catch (IOException e) {
-//                context.getLogger().log("Error sending data to amp: " + e.getMessage());
-//                responseRecords.add(FirehoseEventProcessingResult.createFailureResult(record.getRecordId()));
-//            }
-//            catch (NoSuchAlgorithmException e) {
-//                context.getLogger().log("Error encoding data for sending: " + e.getMessage());
-//                responseRecords.add(FirehoseEventProcessingResult.createFailureResult(record.getRecordId()));
-//            }
+            catch (IOException e) {
+                context.getLogger().log("Error sending data to amp: " + e.getMessage());
+                responseRecords.add(FirehoseEventProcessingResult.createFailureResult(record.getRecordId(), e.getMessage()));
+            }
+            catch (NoSuchAlgorithmException e) {
+                context.getLogger().log("Error encoding data for sending: " + e.getMessage());
+                responseRecords.add(FirehoseEventProcessingResult.createFailureResult(record.getRecordId(), e.getMessage()));
+            }
         }
 
         if (!batchMetrics.isEmpty()) {
@@ -130,22 +108,7 @@ public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehos
             }
         }
 
-//        try {
-//            MetricStreamData.Value value = new MetricStreamData.Value();
-//            value.setCount(1.23);
-//            MetricStreamData data = new MetricStreamData();
-//            data.setMetricStreamName("test_stream_name");
-//            data.setMetricName("test_metric");
-//            data.setTimestamp(Instant.now().toEpochMilli());
-//            data.setValue(value);
-//            batchMetrics.add(data);
-//            sendMetricBatch(batchMetrics, context);
-//        } catch (Exception e) {
-//            throw new RuntimeException(e);
-//        }
-
-        FirehoseEventProcessingResult response = new FirehoseEventProcessingResult();
-        response.setRecords(responseRecords);
+        FirehoseEventProcessingResult response = new FirehoseEventProcessingResult(responseRecords);
         return response;
     }
 
@@ -157,7 +120,7 @@ public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehos
         return value;
     }
 
-    private boolean sendMetricBatch(List<CloudWatchMetric.Metric> metrics, Context context)
+    private boolean sendMetricBatch(List<CloudWatchMetric> metrics, Context context)
             throws IOException, NoSuchAlgorithmException {
 
         // Construct Protobuf payload
@@ -244,9 +207,9 @@ public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehos
         }
     }
 
-    private byte[] serializeToProto(List<CloudWatchMetric.Metric> metrics) {
+    private byte[] serializeToProto(List<CloudWatchMetric> metrics) {
         Remote.WriteRequest.Builder writeRequest = Remote.WriteRequest.newBuilder();
-        for (CloudWatchMetric.Metric metric : metrics) {
+        for (CloudWatchMetric metric : metrics) {
             Types.TimeSeries.Builder timeSeries = Types.TimeSeries.newBuilder();
             if (metric.dimensions != null) {
                 for (Map.Entry<String,String> dimension : metric.dimensions.entrySet()) {
@@ -285,23 +248,5 @@ public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehos
     private String sanitize(String input) {
         return input.replaceAll("[^a-zA-Z0-9_]", "_").toLowerCase();
     }
-
-//    public static void main(String[] args) {
-//        try {
-//            KinesisToPrometheusLambda lambda = new KinesisToPrometheusLambda(true);
-//            List<MetricStreamData> batchMetrics = new ArrayList<>();
-//            MetricStreamData.Value value = new MetricStreamData.Value();
-//            value.setCount(1.23);
-//            MetricStreamData data = new MetricStreamData();
-//            data.setMetricStreamName("test_stream_name");
-//            data.setMetricName("test_metric");
-//            data.setTimestamp(Instant.now().toEpochMilli());
-//            data.setValue(value);
-//            batchMetrics.add(data);
-//            lambda.sendMetricBatch(batchMetrics, null);
-//        } catch (Exception e) {
-//            throw new RuntimeException(e);
-//        }
-//    }
 }
 

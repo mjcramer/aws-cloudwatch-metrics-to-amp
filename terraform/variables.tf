@@ -58,31 +58,3 @@ variable "lambda_writer_config" {
     error_message = "The specified file does not exist. Please provide a valid file path."
   }
 }
-
-#variable "lambda_function_name" {
-#  default = "cloudwatch-metric-processor"
-#}
-#
-#variable "lambda_jar_file_key" {
-#  description = "S3 key for the Lambda JAR file"
-#}
-#
-#variable "prometheus_remote_write_url" {
-#  description = "URL for Prometheus Remote Write"
-#}
-#
-#variable "aws_amp_role_arn" {
-#  description = "IAM Role ARN for Prometheus integration"
-#}
-#
-#variable "prometheus_workspace_id" {
-#  description = "Amazon Managed Prometheus workspace ID"
-#}
-#
-#variable "lambda_role_name" {
-#  default = "lambda-role"
-#}
-#
-#variable "firehose_role_name" {
-#  default = "firehose-role"
-#}
