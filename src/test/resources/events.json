@@ -20,7 +20,7 @@
         ],
         "Value": 5.0,
         "Unit": "Count",
-        "Timestamp": 1739321027
+        "Timestamp": 1739493478
       },
       {
         "Namespace": "AWS/DynamoDB",
@@ -33,7 +33,7 @@
         ],
         "Value": 10.0,
         "Unit": "Count",
-        "Timestamp": 1739321030
+        "Timestamp": 1739493478
       },
       {
         "Namespace": "AWS/DynamoDB",
@@ -46,7 +46,7 @@
         ],
         "Value": 15.3,
         "Unit": "Milliseconds",
-        "Timestamp": 1739321040
+        "Timestamp": 1739493478
       }
     ]
   }

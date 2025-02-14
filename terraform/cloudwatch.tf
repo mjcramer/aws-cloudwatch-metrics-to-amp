@@ -39,7 +39,7 @@ resource "aws_iam_role_policy" "metric_stream_policy" {
 #   log_group_name = aws_cloudwatch_log_group.project_logs.name
 # }
 
-# CloudWatch Metric Stream for DynamoDB Metrics
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_stream
 resource "aws_cloudwatch_metric_stream" "metric_stream" {
   name          = "${var.prefix}-metric-stream"
   role_arn      = aws_iam_role.metric_stream.arn
