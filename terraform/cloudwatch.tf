@@ -49,6 +49,11 @@ resource "aws_cloudwatch_metric_stream" "metric_stream" {
   output_format = "json"
 
   include_filter {
+
+    # dimensions {
+    #   name  = "TableName"
+    #   value = "my-dynamodb-table"
+    # }
     namespace = "AWS/DynamoDB"
     metric_names = [
       "ConditionalCheckFailedRequests",

@@ -2,28 +2,46 @@ package com.adobe.aep.metrics;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.Date;
 
 public class CloudWatchMetric {
 
-    public static class Value {
-        public double min;
-        public double max;
-        public double sum;
-        public double count;
+    public static class Detail {
+        public ArrayList<Metric> metrics;
     }
 
-    @JsonProperty("metric_stream_name")
-    public String metricsStreamName;
-    @JsonProperty("account_id")
-    public String accountId;
+    public static class Dimension {
+        @JsonProperty("Name")
+        public String name;
+        @JsonProperty("Value")
+        public String value;
+    }
+
+    public static class Metric {
+        @JsonProperty("Namespace")
+        public String namespace;
+        @JsonProperty("MetricName")
+        public String metricName;
+        @JsonProperty("Dimensions")
+        public ArrayList<Dimension> dimensions;
+        @JsonProperty("Value")
+        public double value;
+        @JsonProperty("Unit")
+        public String unit;
+        @JsonProperty("Timestamp")
+        public int timestamp;
+    }
+
+    public String version;
+    public String id;
+    @JsonProperty("detail-type")
+    public String detailType;
+    public String source;
+    public String account;
+    public Date time;
     public String region;
-    public String namespace;
-    @JsonProperty("metric_name")
-    public String metricName;
-    public Map<String, String> dimensions;
-    public long timestamp; // milliseconds!
-    public Value value;
-    @JsonProperty("Unit")
-    public String unit;
+    public ArrayList<Object> resources;
+    public Detail detail;
 }
+

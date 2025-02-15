@@ -1,6 +1,100 @@
-{"metric_stream_name":"c2a-metric-stream","account_id":"240259995564","region":"us-west-2","namespace":"AWS/DynamoDB","metric_name":"AccountMaxTableLevelReads","dimensions":{},"timestamp":1739499300000,"value":{"max":40000.0,"min":40000.0,"sum":40000.0,"count":1.0},"unit":"Count"}
-{"metric_stream_name":"c2a-metric-stream","account_id":"240259995564","region":"us-west-2","namespace":"AWS/DynamoDB","metric_name":"AccountMaxWrites","dimensions":{},"timestamp":1739499300000,"value":{"max":80000.0,"min":80000.0,"sum":80000.0,"count":1.0},"unit":"Count"}
-{"metric_stream_name":"c2a-metric-stream","account_id":"240259995564","region":"us-west-2","namespace":"AWS/DynamoDB","metric_name":"SuccessfulRequestLatency","dimensions":{"Operation":"PutItem","TableName":"cramer-terraform-state"},"timestamp":1739499300000,"value":{"max":12.168773,"min":2.692143,"sum":17.875664,"count":3.0},"unit":"Milliseconds"}
-{"metric_stream_name":"c2a-metric-stream","account_id":"240259995564","region":"us-west-2","namespace":"AWS/DynamoDB","metric_name":"ConsumedReadCapacityUnits","dimensions":{"TableName":"cramer-terraform-state"},"timestamp":1739499300000,"value":{"max":1.0,"min":0.0,"sum":2.0,"count":3.0},"unit":"Count"}
-{"metric_stream_name":"c2a-metric-stream","account_id":"240259995564","region":"us-west-2","namespace":"AWS/DynamoDB","metric_name":"ConsumedReadCapacityUnits","dimensions":{"TableName":"cramer-terraform-state"},"timestamp":1739499120000,"value":{"max":0.0,"min":0.0,"sum":0.0,"count":1.0},"unit":"Count"}
-{"metric_stream_name":"c2a-metric-stream","account_id":"240259995564","region":"us-west-2","namespace":"AWS/DynamoDB","metric_name":"ConsumedReadCapacityUnits","dimensions":{"TableName":"cramer-terraform-state"},"timestamp":1739499060000,"value":{"max":0.0,"min":0.0,"sum":0.0,"count":1.0},"unit":"Count"}
+{
+  "version": "0",
+  "id": "abcdef12-3456-789a-bcde-f0123456789a",
+  "detail-type": "CloudWatch Metrics",
+  "source": "aws.cloudwatch",
+  "account": "123456789012",
+  "time": "2025-02-11T12:34:56Z",
+  "region": "us-east-1",
+  "resources": [],
+  "detail": {
+    "metrics": [
+      {
+        "Namespace": "AWS/DynamoDB",
+        "MetricName": "ConsumedReadCapacityUnits",
+        "Dimensions": [
+          {
+            "Name": "TableName",
+            "Value": "my-dynamodb-table"
+          }
+        ],
+        "Value": 5.0,
+        "Unit": "Count",
+        "Timestamp": 1739493478
+      },
+      {
+        "Namespace": "AWS/DynamoDB",
+        "MetricName": "ConsumedWriteCapacityUnits",
+        "Dimensions": [
+          {
+            "Name": "TableName",
+            "Value": "my-dynamodb-table"
+          }
+        ],
+        "Value": 10.0,
+        "Unit": "Count",
+        "Timestamp": 1739493478
+      },
+      {
+        "Namespace": "AWS/DynamoDB",
+        "MetricName": "SuccessfulRequestLatency",
+        "Dimensions": [
+          {
+            "Name": "TableName",
+            "Value": "my-dynamodb-table"
+          }
+        ],
+        "Value": 15.3,
+        "Unit": "Milliseconds",
+        "Timestamp": 1739493478
+      }
+    ]
+  }
+},
+
+
+Record data:
+{
+"metrics": [
+{
+"Namespace": "AWS/DynamoDB",
+"MetricName": "ConsumedReadCapacityUnits",
+"Dimensions": [
+{
+"Name": "TableName",
+"Value": "my-dynamodb-table"
+}
+],
+"Value": 5,
+"Unit": "Count",
+"Timestamp": 1739321027
+},
+{
+"Namespace": "AWS/DynamoDB",
+"MetricName": "ConsumedWriteCapacityUnits",
+"Dimensions": [
+{
+"Name": "TableName",
+"Value": "my-dynamodb-table"
+}
+],
+"Value": 10,
+"Unit": "Count",
+"Timestamp": 1739321030
+},
+{
+"Namespace": "AWS/DynamoDB",
+"MetricName": "SuccessfulRequestLatency",
+"Dimensions": [
+{
+"Name": "TableName",
+"Value": "my-dynamodb-table"
+}
+],
+"Value": 15.3,
+"Unit": "Milliseconds",
+"Timestamp": 1739321040
+}
+]
+}
+}
