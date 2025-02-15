@@ -43,6 +43,7 @@ resource "aws_s3_bucket" "metrics_bucket" {
     Name    = "${var.prefix}-metrics-data"
     Purpose = "CloudWatch metrics storage"
   }
+  force_destroy = true
 }
 
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_acl

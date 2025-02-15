@@ -1,6 +1,8 @@
 package com.adobe.aep.metrics;
 
+import java.util.Base64;
 import java.util.List;
+
 
 public class FirehoseEventProcessingResult {
 
@@ -11,27 +13,29 @@ public class FirehoseEventProcessingResult {
     }
 
     public static class Record {
-        private String recordId;
-        private Result result;
-        private String errorMessage = null;
+        private final String recordId;
+        private final Result result;
+        private String data = "";
 
         Record(String recordId, Result result) {
             this.recordId = recordId;
+            this.result = result;
         }
 
-        Record(String recordId, Result result, String errorMessage) {
+        Record(String recordId, Result result, String data) {
             this(recordId, result);
-            this.errorMessage = errorMessage;
+            this.setData(data);
         }
 
         public String getRecordId() {
             return recordId;
         }
+        public Result getResult() { return result; }
+        public String getData() { return data; }
 
-        public void setErrorMessage(String errorMessage) {
-            this.errorMessage = errorMessage;
+        public void setData(String errorMessage) {
+            this.data = Base64.getEncoder().encodeToString(errorMessage.getBytes());
         }
-
     }
 
     private List<Record> records;
@@ -46,6 +50,10 @@ public class FirehoseEventProcessingResult {
 
     public static FirehoseEventProcessingResult.Record createSuccessResult(String recordId) {
         return new FirehoseEventProcessingResult.Record(recordId, Result.Ok);
+    }
+
+    public static FirehoseEventProcessingResult.Record createDroppedResult(String recordId) {
+        return new FirehoseEventProcessingResult.Record(recordId, Result.Dropped);
     }
 
     public static FirehoseEventProcessingResult.Record createFailureResult(String recordId, String errorMessage) {

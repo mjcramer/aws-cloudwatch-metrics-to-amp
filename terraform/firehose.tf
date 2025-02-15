@@ -34,6 +34,15 @@ data "aws_iam_policy_document" "firehose_policy" {
       "${aws_s3_bucket.metrics_bucket.arn}/*"
     ]
   }
+  statement {
+    effect = "Allow"
+    actions = [
+      "lambda:InvokeFunction"
+    ]
+    resources = [
+      aws_lambda_function.amp_publisher.arn
+    ]
+  }
 }
 
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy
