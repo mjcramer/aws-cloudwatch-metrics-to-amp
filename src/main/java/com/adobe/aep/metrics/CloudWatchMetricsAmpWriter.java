@@ -77,6 +77,7 @@ public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehos
             context.getLogger().log(String.format("Received record %s", record.getRecordId()));
             String recordData = new String(record.getData().array(), StandardCharsets.UTF_8);
             context.getLogger().log(String.format("Record data: %s", recordData));
+
             try {
                 boolean success = true;
                 for (String metricData : recordData.split("\n")) {
@@ -94,7 +95,7 @@ public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehos
                 }
                 if (success) {
                     context.getLogger().log(String.format("Successfully processed record %s", record.getRecordId()));
-                    responseRecords.add(FirehoseEventProcessingResult.createSuccessResult(record.getRecordId()));
+                    responseRecords.add(FirehoseEventProcessingResult.createSuccessResult(record.getRecordId(), recordData));
                 } else {
                     context.getLogger().log(String.format("Failed to send record %s", record.getRecordId()));
                     responseRecords.add(FirehoseEventProcessingResult.createFailureResult(record.getRecordId(), "Batch failed to write."));

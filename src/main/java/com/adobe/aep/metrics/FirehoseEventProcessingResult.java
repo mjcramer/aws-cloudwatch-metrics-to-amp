@@ -15,16 +15,12 @@ public class FirehoseEventProcessingResult {
     public static class Record {
         private final String recordId;
         private final Result result;
-        private String data = "";
-
-        Record(String recordId, Result result) {
-            this.recordId = recordId;
-            this.result = result;
-        }
+        private String data;
 
         Record(String recordId, Result result, String data) {
-            this(recordId, result);
-            this.setData(data);
+            this.recordId = recordId;
+            this.result = result;
+            this.data = Base64.getEncoder().encodeToString(data.getBytes());
         }
 
         public String getRecordId() {
@@ -33,9 +29,6 @@ public class FirehoseEventProcessingResult {
         public Result getResult() { return result; }
         public String getData() { return data; }
 
-        public void setData(String errorMessage) {
-            this.data = Base64.getEncoder().encodeToString(errorMessage.getBytes());
-        }
     }
 
     private List<Record> records;
@@ -48,12 +41,12 @@ public class FirehoseEventProcessingResult {
         this.records = records;
     }
 
-    public static FirehoseEventProcessingResult.Record createSuccessResult(String recordId) {
-        return new FirehoseEventProcessingResult.Record(recordId, Result.Ok);
+    public static FirehoseEventProcessingResult.Record createSuccessResult(String recordId, String data) {
+        return new FirehoseEventProcessingResult.Record(recordId, Result.Ok, data);
     }
 
-    public static FirehoseEventProcessingResult.Record createDroppedResult(String recordId) {
-        return new FirehoseEventProcessingResult.Record(recordId, Result.Dropped);
+    public static FirehoseEventProcessingResult.Record createDroppedResult(String recordId, String data) {
+        return new FirehoseEventProcessingResult.Record(recordId, Result.Dropped, data);
     }
 
     public static FirehoseEventProcessingResult.Record createFailureResult(String recordId, String errorMessage) {

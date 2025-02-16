@@ -23,7 +23,7 @@ variable "aws_account_id" {
 }
 
 variable "aws_region" {
-  default = "us-west-2"
+  default = "us-east-1"
 }
 
 variable "project_logs_retention_in_days" {

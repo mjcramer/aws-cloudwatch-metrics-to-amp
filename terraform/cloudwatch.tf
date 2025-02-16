@@ -15,7 +15,7 @@ data "aws_iam_policy_document" "metric_stream_assume_role" {
 }
 
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role
-resource "aws_iam_role" "metric_stream" {
+resource "aws_iam_role" "metric_stream_role" {
   name = "${title(var.prefix)}CloudWatchMetricsStreamRole"
   assume_role_policy = data.aws_iam_policy_document.metric_stream_assume_role.json
 }
@@ -29,31 +29,31 @@ data "aws_iam_policy_document" "metric_stream_policy" {
       "firehose:PutRecordBatch"
     ]
     resources = [
-      "*"
+      aws_kinesis_firehose_delivery_stream.metrics.arn
     ]
   }
 }
 
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy
-resource "aws_iam_role_policy" "metric_stream_policy" {
+resource "aws_iam_policy" "metric_stream_policy" {
   name   = "${title(var.prefix)}CloudWatchMetricStreamPolicy"
-  role   = aws_iam_role.metric_stream.name
   policy = data.aws_iam_policy_document.metric_stream_policy.json
+}
+
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment
+resource "aws_iam_role_policy_attachment" "metric_stream_policy" {
+  role       = aws_iam_role.metric_stream_role.id
+  policy_arn = aws_iam_policy.metric_stream_policy.arn
 }
 
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_stream
 resource "aws_cloudwatch_metric_stream" "metric_stream" {
   name          = "${var.prefix}-metric-stream"
-  role_arn      = aws_iam_role.metric_stream.arn
+  role_arn      = aws_iam_role.metric_stream_role.arn
   firehose_arn  = aws_kinesis_firehose_delivery_stream.metrics.arn
   output_format = "json"
 
   include_filter {
-
-    # dimensions {
-    #   name  = "TableName"
-    #   value = "my-dynamodb-table"
-    # }
     namespace = "AWS/DynamoDB"
     metric_names = [
       "ConditionalCheckFailedRequests",
