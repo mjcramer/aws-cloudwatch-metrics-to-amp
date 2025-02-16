@@ -2,11 +2,11 @@
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document
 data "aws_iam_policy_document" "metric_stream_assume_role" {
   statement {
-    effect = "Allow"
+    effect  = "Allow"
     actions = ["sts:AssumeRole"]
 
     principals {
-      type        = "Service"
+      type = "Service"
       identifiers = [
         "streams.metrics.cloudwatch.amazonaws.com"
       ]
@@ -16,14 +16,14 @@ data "aws_iam_policy_document" "metric_stream_assume_role" {
 
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role
 resource "aws_iam_role" "metric_stream_role" {
-  name = "${title(var.prefix)}CloudWatchMetricsStreamRole"
+  name               = "${title(var.prefix)}CloudWatchMetricsStreamRole"
   assume_role_policy = data.aws_iam_policy_document.metric_stream_assume_role.json
 }
 
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document
 data "aws_iam_policy_document" "metric_stream_policy" {
   statement {
-    effect  = "Allow"
+    effect = "Allow"
     actions = [
       "firehose:PutRecord",
       "firehose:PutRecordBatch"
