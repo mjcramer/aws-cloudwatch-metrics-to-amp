@@ -21,4 +21,4 @@ amp.txt
 __pycache__
 *.iml
 *_pb2.py
-python/
+.python/

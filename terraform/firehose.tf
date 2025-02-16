@@ -2,11 +2,11 @@
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document
 data "aws_iam_policy_document" "firehose_assume_role" {
   statement {
-    effect = "Allow"
+    effect  = "Allow"
     actions = ["sts:AssumeRole"]
 
     principals {
-      type        = "Service"
+      type = "Service"
       identifiers = [
         "firehose.amazonaws.com"
       ]
@@ -49,7 +49,7 @@ data "aws_iam_policy_document" "firehose_policy" {
 resource "aws_iam_policy" "firehose_policy" {
   name        = "${title(var.prefix)}FirehosePolicy"
   description = "Allows firehose to write to S3"
-  policy = data.aws_iam_policy_document.firehose_policy.json
+  policy      = data.aws_iam_policy_document.firehose_policy.json
 }
 
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment
@@ -77,7 +77,7 @@ resource "aws_kinesis_firehose_delivery_stream" "metrics" {
     compression_format = "Snappy"
 
     cloudwatch_logging_options {
-      enabled = true
+      enabled         = true
       log_group_name  = aws_cloudwatch_log_group.project_logs.name
       log_stream_name = aws_cloudwatch_log_stream.metric_delivery_stream_logs.name
     }

@@ -28,7 +28,7 @@ variable "aws_region" {
 
 variable "project_logs_retention_in_days" {
   description = "The number of days to retain logs for this project"
-  default = 5
+  default     = 5
 }
 
 variable "metrics_stream_shard_count" {
@@ -49,7 +49,7 @@ variable "metrics_bucket_buffering_interval" {
 variable "lambda_writer_config" {
   description = "The lambda function resource configuration for the AMP writer"
   default = {
-    jar_file = "../target/cloudwatch-metrics-amp-writer-1.0.jar"
+    jar_file    = "../target/cloudwatch-metrics-amp-writer-1.0.jar"
     memory_size = 512
     timeout     = 60
   }
