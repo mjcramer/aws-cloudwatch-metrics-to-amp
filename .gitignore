@@ -13,12 +13,14 @@ hs_err_pid*
 **/.terraform.lock.hcl
 **/terraform.tfstate*
 
-# General 
-**/*.log
-**/*.zip
-amp.txt
 # Python
 __pycache__
 *.iml
 *_pb2.py
 .python/
+
+# General 
+**/*.log
+**/*.zip
+
+terraform/requirements
