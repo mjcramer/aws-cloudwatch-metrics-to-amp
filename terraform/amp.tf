@@ -8,14 +8,8 @@ resource "aws_prometheus_workspace" "amp_workspace" {
   }
 }
 
-# resource "aws_prometheus_alert_manager_definition" "alerts" {
-#    workspace_id = aws_prometheus_workspace.amp_workspace.id
-#
-#    definition = <<-EOT
-# alertmanager_config: |
-#   route:
-#     receiver: 'default'
-#     receivers:
-#       - name: 'default'
-# EOT
-# }
+# https://registry.terraform.io/providers/hashicorp/local/latest/docs/resources/file
+resource "local_file" "amp_query_url" {
+  filename = "${path.root}/../amp.txt"
+  content  = aws_prometheus_workspace.amp_workspace.prometheus_endpoint
+}

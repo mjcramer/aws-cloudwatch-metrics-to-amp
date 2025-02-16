@@ -38,7 +38,7 @@ provider "aws" {
 
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket
 resource "aws_s3_bucket" "metrics_bucket" {
-  bucket = "${var.prefix}-metrics-data"
+  bucket = "${var.prefix}-metrics-results"
   tags = {
     Name    = "${var.prefix}-metrics-data"
     Purpose = "CloudWatch metrics storage"
