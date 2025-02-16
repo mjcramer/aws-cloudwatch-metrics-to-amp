@@ -16,7 +16,7 @@ hs_err_pid*
 # General 
 **/*.log
 **/*.zip
-
+amp.txt
 # Python
 __pycache__
 *.iml

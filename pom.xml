@@ -140,7 +140,7 @@
                 <artifactId>protobuf-maven-plugin</artifactId>
                 <version>0.6.1</version>
                 <configuration>
-                    <protocExecutable>/run/current-system/sw/bin/protoc</protocExecutable>
+                    <protocExecutable>protoc</protocExecutable>
                 </configuration>
                 <executions>
                     <execution>

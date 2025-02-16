@@ -5,7 +5,7 @@ locals {
 
 variable "prefix" {
   description = "The prefix which should be used for all resources in this project"
-  default     = "c2a" // cloudwatch to amp
+  default     = "adobe-aep" // cloudwatch to amp
 }
 
 variable "environment" {
@@ -19,7 +19,7 @@ variable "owner" {
 }
 
 variable "aws_account_id" {
-  default = "240259995564"
+  default = "471112885190"
 }
 
 variable "aws_region" {
