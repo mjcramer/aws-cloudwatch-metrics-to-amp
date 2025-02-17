@@ -32,6 +32,17 @@ data "aws_iam_policy_document" "metric_stream_policy" {
       aws_kinesis_firehose_delivery_stream.metrics.arn
     ]
   }
+  statement {
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+    resources = [
+      "*"
+    ]
+  }
 }
 
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy

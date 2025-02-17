@@ -25,6 +25,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.adobe.aep.metrics.AwsV4SigningUtils.*;
 
@@ -80,9 +81,10 @@ public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehos
 
             try {
                 boolean success = true;
+                ArrayList<String> tally = new ArrayList<>();
                 for (String metricData : recordData.split("\n")) {
                     CloudWatchStreamMetric metric = objectMapper.readValue(metricData, CloudWatchStreamMetric.class);
-                    context.getLogger().log(String.format("Parsed record for metric %s", metric.metricName));
+                    tally.add(metric.metricName);
                     batchMetrics.add(metric);
                     if (batchMetrics.size() >= MAX_BATCH_SIZE) {
                         context.getLogger().log(String.format("Max batch size reached, sending %d metrics", batchMetrics.size()));
@@ -93,6 +95,7 @@ public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehos
                         batchMetrics.clear();
                     }
                 }
+                context.getLogger().log(String.format("Parsed record for metrics %s", String.join(", ", tally)));
                 if (success) {
                     context.getLogger().log(String.format("Successfully processed record %s", record.getRecordId()));
                     responseRecords.add(FirehoseEventProcessingResult.createSuccessResult(record.getRecordId(), recordData));
@@ -114,7 +117,7 @@ public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehos
 
         if (!batchMetrics.isEmpty()) {
             try {
-                context.getLogger().log(String.format("Processed %d records, sending %d metrics", responseRecords.size(), batchMetrics.size()));
+                context.getLogger().log(String.format("Processed %d records, sending %d metric stream items", responseRecords.size(), batchMetrics.size()));
                 if (sendMetricBatch(batchMetrics, context)) {
                     context.getLogger().log("Successfully sent final batch.");
                 } else {
@@ -241,44 +244,65 @@ public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehos
 
     private byte[] serializeToProto(List<CloudWatchStreamMetric> metrics) {
         Remote.WriteRequest.Builder writeRequest = Remote.WriteRequest.newBuilder();
-        for (CloudWatchStreamMetric metric : metrics) {
-            Types.TimeSeries.Builder timeSeries = Types.TimeSeries.newBuilder();
-            if (metric.dimensions != null) {
-                for (Map.Entry<String, String> dimension : metric.dimensions.entrySet()) {
-                    timeSeries.addLabels(Types.Label.newBuilder()
-                            .setName(sanitize(dimension.getKey()))
-                            .setValue(dimension.getValue())
-                            .build());
-                }
-            }
-            timeSeries.addLabels(Types.Label.newBuilder()
-                    .setName("__name__")
-                    .setValue(sanitize(metric.metricName))
-            );
-            timeSeries.addSamples(Types.Sample.newBuilder()
-                    // Convert seconds to milliseconds
-                    .setTimestamp(metric.timestamp)
-                    .setValue(metric.value.count)
-                    .build());
-            writeRequest.addTimeseries(timeSeries.build());
-            Types.MetricMetadata.Builder metaData = Types.MetricMetadata.newBuilder();
-            if (metric.unit != null) {
-                metaData.setUnit(metric.unit);
-                if (metric.unit.equals("Count")) {
-                    metaData.setType(Types.MetricMetadata.MetricType.COUNTER);
-                }
-                // TODO: What about other types?
-            }
-            metaData.setMetricFamilyName(sanitize(metric.namespace));
-            writeRequest.addMetadata(metaData.build());
-        }
+
+        Map<String, List<CloudWatchStreamMetric>> metricsGroupedByName = metrics.stream()
+                .collect(Collectors.groupingBy(m -> m.metricName));
+        metricsGroupedByName.forEach((metricName, groupedMetrics) -> {
+            System.out.printf("Aggregating %d metrics for '%s'\n", groupedMetrics.size(), metricName);
+
+            Map<Map<String, String>, List<CloudWatchStreamMetric>> groupedMetricsGroupedByDimensions =
+                    groupedMetrics.stream().collect(Collectors.groupingBy(m -> m.dimensions));
+            groupedMetricsGroupedByDimensions.forEach((dimensions, nestedGroupedMetrics) -> {
+                Pair<Types.TimeSeries, Types.MetricMetadata> pair = this.getWriteRequestPair(metricName, dimensions, nestedGroupedMetrics);
+                System.out.printf("Write record for %s, adding %d samples of type %s\n", metricName, pair.first().getSamplesCount(), pair.second().getUnit());
+                writeRequest.addTimeseries(pair.first());
+                writeRequest.addMetadata(pair.second());
+            });
+        });
 
         // Serialize to Protobuf
         return writeRequest.build().toByteArray();
     }
 
-    private String sanitize(String input) {
-        return input.replaceAll("[^a-zA-Z0-9_]", "_").toLowerCase();
+    private Pair<Types.TimeSeries, Types.MetricMetadata> getWriteRequestPair(String metricName, Map<String, String> dimensions, List<CloudWatchStreamMetric> metricsValues) {
+        Types.TimeSeries.Builder timeSeries = Types.TimeSeries.newBuilder();
+        Types.MetricMetadata.Builder metaData = Types.MetricMetadata.newBuilder();
+        if (dimensions != null) {
+            for (Map.Entry<String, String> dimension : dimensions.entrySet()) {
+                timeSeries.addLabels(Types.Label.newBuilder()
+                        .setName(sanitize(dimension.getKey()))
+                        .setValue(dimension.getValue())
+                        .build());
+                System.out.printf("Adding dimension %s with value %s for metric '%s'\n", dimension.getKey(), dimension.getValue(), metricName);
+            }
+        }
+        timeSeries.addLabels(Types.Label.newBuilder()
+                .setName("__name__")
+                .setValue(sanitize(metricName))
+        );
+        for (CloudWatchStreamMetric metric : metricsValues) {
+            Types.Sample.Builder sample = Types.Sample.newBuilder();
+            sample.setTimestamp(metric.timestamp);
+            if (metric.unit != null) {
+                metaData.setUnit(metric.unit);
+                if (metric.unit.equals("Count")) {
+                    metaData.setType(Types.MetricMetadata.MetricType.COUNTER);
+                    sample.setValue(metric.value.count);
+                }
+                // TODO: What about other types?
+            }
+            System.out.printf("Adding sample %f at timestamp %d for metric '%s'\n", sample.getValue(), sample.getTimestamp(), metricName);
+            timeSeries.addSamples(sample.build());
+            metaData.setMetricFamilyName(sanitize(metric.namespace));
+        }
+        return new Pair<>(timeSeries.build(), metaData.build());
     }
-}
+
+    private String sanitize (String input){
+            return input.replaceAll("[^a-zA-Z0-9_]", "_").toLowerCase();
+        }
+    }
+
+    record Pair<F, S>(F first, S second) {
+    }
 
