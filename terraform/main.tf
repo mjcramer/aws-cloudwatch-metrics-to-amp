@@ -1,19 +1,13 @@
 
 terraform {
-  # backend "s3" {
-  #   bucket         = "adobe-terraform-magdamteam-bucket"
-  #   key            = "global/cloudwatch-metrics-in-amp"
-  #   region         = "us-east-1"
-  #   encrypt        = true
-  #   dynamodb_table = "terraform-up-and-running-locks"
-  # }
   backend "s3" {
-    bucket         = "cramer-terraform-state"
-    key            = "terraform.tfstate"
-    region         = "us-west-2"
-    dynamodb_table = "cramer-terraform-state"
+    bucket         = "adobe-terraform-magdamteam-bucket"
+    key            = "global/cloudwatch-metrics-in-amp"
+    region         = "us-east-1"
     encrypt        = true
+    dynamodb_table = "terraform-up-and-running-locks"
   }
+
 
   required_providers {
     local = {

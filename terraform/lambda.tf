@@ -37,7 +37,7 @@ data "aws_iam_policy_document" "amp_write" {
       "kms:Decrypt"
     ]
     resources = [
-    "*"
+      "*"
     ]
   }
 }
