@@ -34,7 +34,7 @@ data "aws_iam_policy_document" "amp_write" {
   statement {
     effect = "Allow"
     actions = [
-      "kms:Decrypt"
+      "kms:*"
     ]
     resources = [
       "*"
@@ -154,7 +154,7 @@ data "archive_file" "amp_query_zip" {
 resource "null_resource" "pip_install_requirements" {
   # Run pip install if the target directory doesn't exist or changes.
   provisioner "local-exec" {
-    command = "mkdir -p ${local.requirements_dir}/python && pip install -r requirements.txt -t ${local.requirements_dir}/python"
+    command = "mkdir -p ${local.requirements_dir}/python && pip3 install -r requirements.txt -t ${local.requirements_dir}/python"
   }
 
   # You can use a trigger to force re-run if needed (for example, if you update the requirements)
