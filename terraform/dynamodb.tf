@@ -22,3 +22,7 @@ resource "aws_dynamodb_table" "metrics_table" {
     enabled = true
   }
 }
+
+output "dynamodb_table_name" {
+  value = aws_dynamodb_table.metrics_table.name
+}

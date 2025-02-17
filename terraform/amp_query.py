@@ -13,19 +13,13 @@ def execute(event, context):
     # Extract the metric query from the event payload.
     promql_query = event.get(query_param)
     if not promql_query:
-        return {
-            "statusCode": 400,
-            "body": json.dumps({"error": f"Missing '{query_param}' in event payload"})
-        }
+        return f"Missing '{query_param}' in event payload"
     print(f"PromQL query = '{promql_query}'")
 
     # Retrieve the AMP endpoint from environment variables.
     amp_endpoint = os.environ.get("AMP_ENDPOINT").rstrip("/")
     if not amp_endpoint:
-        return {
-            "statusCode": 500,
-            "body": json.dumps({"error": "AMP_ENDPOINT environment variable not set"})
-        }
+        return "AMP_ENDPOINT environment variable not set"
     # Construct the URL for the instant query endpoint.
     query_url = f"{amp_endpoint}/api/v1/query"
     print(f"query url = {query_url}")
@@ -55,15 +49,10 @@ def execute(event, context):
         response.raise_for_status()  # Will raise an error if the response was unsuccessful
 
     except requests.RequestException as e:
-        return {
-            "statusCode": 500,
-            "body": json.dumps({"error": "Error querying AMP", "details": str(e)})
-        }
+        return f"Error querying AMP: {str(e)}"
 
     # Return the AMP response.
     result = response.json()
-    return {
-        "statusCode": 200,
-        "body": json.dumps(result)
-    }
-
+    if not result["status"] == "success":
+        return f"AMP query returned: {result}"
+    return result["data"]

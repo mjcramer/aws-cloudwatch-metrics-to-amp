@@ -8,7 +8,6 @@ terraform {
     dynamodb_table = "terraform-up-and-running-locks"
   }
 
-
   required_providers {
     local = {
       source  = "hashicorp/local"
