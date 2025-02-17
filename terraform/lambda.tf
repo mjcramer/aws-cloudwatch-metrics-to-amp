@@ -31,6 +31,15 @@ data "aws_iam_policy_document" "amp_write" {
       aws_prometheus_workspace.amp_workspace.arn
     ]
   }
+  statement {
+    effect = "Allow"
+    actions = [
+      "kms:Decrypt"
+    ]
+    resources = [
+    "*"
+    ]
+  }
 }
 
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy
@@ -188,6 +197,10 @@ resource "aws_lambda_function" "amp_query" {
     }
   }
 
+  logging_config {
+    log_format = "Text"
+    log_group  = aws_cloudwatch_log_group.project_logs.name
+  }
   source_code_hash = data.archive_file.amp_query_zip.output_base64sha256
 }
 

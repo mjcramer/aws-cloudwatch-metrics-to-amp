@@ -18,10 +18,10 @@ variable "owner" {
   default     = "Magda Miu team / Adobe"
 }
 
-variable "aws_account_id" {
-  default = "471112885190"
-}
-
+# variable "aws_account_id" {
+#   default = "471112885190"
+# }
+#
 variable "aws_region" {
   default = "us-east-1"
 }
