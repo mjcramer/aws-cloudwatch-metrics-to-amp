@@ -11,6 +11,7 @@
         <aws.sdk.version>2.21.0</aws.sdk.version>
         <jackson.version>2.15.3</jackson.version>
         <snappy.version>1.1.10.5</snappy.version>
+        <slf4j.version>2.0.7</slf4j.version>
         <prometheus.version>0.16.0</prometheus.version>
         <protobuf.version>4.29.1</protobuf.version>
     </properties>
@@ -44,17 +45,16 @@
             <artifactId>apache-client</artifactId>
             <version>${aws.sdk.version}</version>
         </dependency>
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>kinesis</artifactId>
-            <version>${aws.sdk.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.httpcomponents.client5</groupId>
-            <artifactId>httpclient5</artifactId>
-            <version>5.2</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>software.amazon.awssdk</groupId>-->
+<!--            <artifactId>kinesis</artifactId>-->
+<!--            <version>${aws.sdk.version}</version>-->
+<!--        </dependency>-->
+<!--        <dependency>-->
+<!--            <groupId>org.apache.httpcomponents.client5</groupId>-->
+<!--            <artifactId>httpclient5</artifactId>-->
+<!--            <version>5.2</version>-->
+<!--        </dependency>-->
 
         <!-- Jackson for JSON processing -->
         <dependency>
@@ -82,45 +82,17 @@
             <version>${snappy.version}</version>
         </dependency>
 
-        <!-- Prometheus Protobuf dependencies -->
-        <!--        <dependency>-->
-        <!--            <groupId>io.prometheus</groupId>-->
-        <!--            <artifactId>simpleclient_common</artifactId>-->
-        <!--            <version>${prometheus.version}</version>-->
-        <!--        </dependency>-->
-        <!--        <dependency>-->
-        <!--            <groupId>io.prometheus</groupId>-->
-        <!--            <artifactId>simpleclient</artifactId>-->
-        <!--            <version>${prometheus.version}</version>-->
-        <!--        </dependency>-->
-
         <!-- SLF4J for logging -->
         <dependency>
             <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <version>1.7.36</version>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
         </dependency>
-
-        <!-- Testing Dependencies -->
-        <!--        <dependency>-->
-        <!--            <groupId>org.junit.jupiter</groupId>-->
-        <!--            <artifactId>junit-jupiter-engine</artifactId>-->
-        <!--            <version>5.10.0</version>-->
-        <!--            <scope>test</scope>-->
-        <!--        </dependency>-->
-        <!--        <dependency>-->
-        <!--            <groupId>org.mockito</groupId>-->
-        <!--            <artifactId>mockito-core</artifactId>-->
-        <!--            <version>5.4.0</version>-->
-        <!--            <scope>test</scope>-->
-        <!--        </dependency>-->
-
-        <!--        <dependency>-->
-        <!--            <groupId>org.apache.commons</groupId>-->
-        <!--            <artifactId>commons-lang3</artifactId>-->
-        <!--            <version>3.9</version>-->
-        <!--        </dependency>-->
-
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

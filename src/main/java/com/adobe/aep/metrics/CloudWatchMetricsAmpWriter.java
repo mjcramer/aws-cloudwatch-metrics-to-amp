@@ -1,5 +1,6 @@
 package com.adobe.aep.metrics;
 
+import com.adobe.aep.metrics.records.CloudWatchStreamMetric;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.KinesisFirehoseEvent;
@@ -33,9 +34,6 @@ import static com.adobe.aep.metrics.AwsV4SigningUtils.*;
 public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehoseEvent, FirehoseEventProcessingResult> {
 
     private static final int MAX_BATCH_SIZE = 500;
-    private static final int MAX_METRIC_NAME_LENGTH = 200;
-    private static final int MAX_DIMENSION_VALUE_LENGTH = 100;
-
     private static final String METHOD = "POST";
     private static final String SERVICE = "aps";
     private static final String ALGORITHM = "AWS4-HMAC-SHA256";
@@ -52,8 +50,8 @@ public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehos
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final AwsSessionCredentials credentials;
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'", Locale.US);
-    private final boolean signedRequests;
-    private final String metricFormat;
+    private final String metricNameLabel = "__name__";
+    private final String metricAccountLabel = "account";
 
     private final Logger logger = LoggerFactory.getLogger(CloudWatchMetricsAmpWriter.class);
 
@@ -65,8 +63,13 @@ public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehos
         this.restApiEndpoint = String.format("https://%s%s", restApiHost, restApiPath);
         this.credentials = (AwsSessionCredentials) DefaultCredentialsProvider.create().resolveCredentials();
         this.dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-        this.signedRequests = Boolean.parseBoolean(getEnvVar("SIGNED_REQUESTS", "true"));
-        this.metricFormat = getEnvVar("METRIC_FORMAT", "json");
+
+        String logLevel = System.getenv("LOG_LEVEL");
+        if (logLevel != null && !logLevel.isEmpty()) {
+            // Set the system property for SLF4J Simple Logger
+            // Valid values are: trace, debug, info, warn, error, off
+            System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", logLevel.toLowerCase());
+        }
     }
 
     @Override
@@ -84,7 +87,7 @@ public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehos
                 ArrayList<String> tally = new ArrayList<>();
                 for (String metricData : recordData.split("\n")) {
                     CloudWatchStreamMetric metric = objectMapper.readValue(metricData, CloudWatchStreamMetric.class);
-                    tally.add(metric.metricName);
+                    tally.add(metric.metricName());
                     batchMetrics.add(metric);
                     if (batchMetrics.size() >= MAX_BATCH_SIZE) {
                         context.getLogger().log(String.format("Max batch size reached, sending %d metrics", batchMetrics.size()));
@@ -193,7 +196,7 @@ public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehos
                         signedHeaders + "\n" +
                         payloadHash;
 
-        // System.out.printf("Canonical Request: '%s'\n", canonicalRequest.replace("\n", "\\n"));
+        logger.debug("Canonical Request: '{}'", canonicalRequest.replace("\n", "\\n"));
 
         String credentialScope = String.format("%s/%s/%s/aws4_request", dateStamp, awsRegion, SERVICE);
         String hashedCanonicalRequest = sha256Hex(canonicalRequest);
@@ -203,7 +206,7 @@ public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehos
                         credentialScope + "\n" +
                         hashedCanonicalRequest;
 
-        // System.out.printf("String to Sign: '%s'\n", stringToSign);
+        logger.debug("String to Sign: '{}'", stringToSign);
 
         byte[] signingKey = getSignatureKey(credentials.secretAccessKey(), dateStamp, awsRegion, SERVICE);
         String signature = hmacSha256Hex(signingKey, stringToSign);
@@ -212,7 +215,7 @@ public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehos
         String authorizationHeader = String.format("%s Credential=%s/%s, SignedHeaders=%s, Signature=%s",
                 ALGORITHM, credentials.accessKeyId(), credentialScope, signedHeaders, signature);
 
-        System.out.printf("Sending %d bytes payload to prometheus at %s\n", compressedData.length, restApiEndpoint);
+        logger.debug("Sending {} bytes payload to prometheus at {}", compressedData.length, restApiEndpoint);
 
         HttpPost post = new HttpPost(URI.create(restApiEndpoint));
         post.setHeader("host", restApiHost);
@@ -231,7 +234,7 @@ public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehos
              CloseableHttpResponse response = client.execute(post)) {
             int statusCode = response.getStatusLine().getStatusCode();
             if (statusCode != 200) {
-                System.out.printf("Returned status code %s: %s\n", statusCode,
+                logger.debug("Returned status code {}: {}", statusCode,
                         new String(response.getEntity().getContent().readAllBytes(), Charset.defaultCharset())
                 );
                 return false;
@@ -244,65 +247,114 @@ public class CloudWatchMetricsAmpWriter implements RequestHandler<KinesisFirehos
 
     private byte[] serializeToProto(List<CloudWatchStreamMetric> metrics) {
         Remote.WriteRequest.Builder writeRequest = Remote.WriteRequest.newBuilder();
-
-        Map<String, List<CloudWatchStreamMetric>> metricsGroupedByName = metrics.stream()
-                .collect(Collectors.groupingBy(m -> m.metricName));
-        metricsGroupedByName.forEach((metricName, groupedMetrics) -> {
-            System.out.printf("Aggregating %d metrics for '%s'\n", groupedMetrics.size(), metricName);
-
-            Map<Map<String, String>, List<CloudWatchStreamMetric>> groupedMetricsGroupedByDimensions =
-                    groupedMetrics.stream().collect(Collectors.groupingBy(m -> m.dimensions));
-            groupedMetricsGroupedByDimensions.forEach((dimensions, nestedGroupedMetrics) -> {
-                Pair<Types.TimeSeries, Types.MetricMetadata> pair = this.getWriteRequestPair(metricName, dimensions, nestedGroupedMetrics);
-                System.out.printf("Write record for %s, adding %d samples of type %s\n", metricName, pair.first().getSamplesCount(), pair.second().getUnit());
-                writeRequest.addTimeseries(pair.first());
-                writeRequest.addMetadata(pair.second());
+        // To make sure all the properties are aggregated correctly, first we will group by the metric name. This will
+        metrics.stream()
+                .collect(Collectors.groupingBy(CloudWatchStreamMetric::accountId))
+                .forEach((accountId, accountGroupedMetrics) -> {
+            logger.debug("Aggregating {} metrics for '{}'", accountGroupedMetrics.size(), accountId);
+            accountGroupedMetrics.stream()
+                    .collect(Collectors.groupingBy(CloudWatchStreamMetric::metricName))
+                    .forEach((metricName, nameGroupedMetrics) -> {
+                logger.debug("Aggregating {} metrics for '{}'", nameGroupedMetrics.size(), metricName);
+                nameGroupedMetrics.stream()
+                        .collect(Collectors.groupingBy(CloudWatchStreamMetric::dimensions))
+                        .forEach((dimensions, dimensionGroupedMetrics) -> {
+                    Pair<Types.TimeSeries, Types.MetricMetadata> pair = this.createWriteRequestPair(accountId, metricName, dimensions, dimensionGroupedMetrics);
+                    logger.debug("Write record for {}, adding {} samples of type {}", metricName, pair.first().getSamplesCount(), pair.second().getUnit());
+                    writeRequest.addTimeseries(pair.first());
+                    writeRequest.addMetadata(pair.second());
+                });
             });
         });
+
 
         // Serialize to Protobuf
         return writeRequest.build().toByteArray();
     }
 
-    private Pair<Types.TimeSeries, Types.MetricMetadata> getWriteRequestPair(String metricName, Map<String, String> dimensions, List<CloudWatchStreamMetric> metricsValues) {
+    /**
+     * This function creates a protobuf `TimeSeries` for a particular metric (given by `metricName`) and populates the
+     * samples with the aggregated data from the list of metric stream items (given by `metrisValues`). It also adds
+     * an account label and labels for each of the given dimensions.
+     *
+     * It also creates a protobuf `MetricMetadata` for the metric and populates it from values in the given metric
+     * stream list. These two are returns as pairs.
+     *
+     * @param accountId The AWS account from which the data originates
+     * @param metricName The name of the metric
+     * @param dimensions Metric dimensions to be added as labels
+     * @param metricsValues The list of the metrics from which values and timestamps will be extracted
+     * @return A pair of timeseries and metadata for a particular metric
+     */
+    private Pair<Types.TimeSeries, Types.MetricMetadata> createWriteRequestPair(
+            String accountId,
+            String metricName,
+            Map<String, String> dimensions,
+            List<CloudWatchStreamMetric> metricsValues
+        ) {
         Types.TimeSeries.Builder timeSeries = Types.TimeSeries.newBuilder();
         Types.MetricMetadata.Builder metaData = Types.MetricMetadata.newBuilder();
         if (dimensions != null) {
             for (Map.Entry<String, String> dimension : dimensions.entrySet()) {
                 timeSeries.addLabels(Types.Label.newBuilder()
-                        .setName(sanitize(dimension.getKey()))
+                        .setName(sanitizeLabel(dimension.getKey()))
                         .setValue(dimension.getValue())
                         .build());
-                System.out.printf("Adding dimension %s with value %s for metric '%s'\n", dimension.getKey(), dimension.getValue(), metricName);
+                logger.debug("Adding dimension {} with value {} for metric '{}'", dimension.getKey(), dimension.getValue(), metricName);
             }
         }
         timeSeries.addLabels(Types.Label.newBuilder()
-                .setName("__name__")
-                .setValue(sanitize(metricName))
+                .setName(metricNameLabel)
+                .setValue(this.sanitizeName(metricName))
+        );
+        timeSeries.addLabels(Types.Label.newBuilder()
+                .setName(metricAccountLabel)
+                .setValue(accountId)
         );
         for (CloudWatchStreamMetric metric : metricsValues) {
             Types.Sample.Builder sample = Types.Sample.newBuilder();
-            sample.setTimestamp(metric.timestamp);
-            if (metric.unit != null) {
-                metaData.setUnit(metric.unit);
-                if (metric.unit.equals("Count")) {
+            sample.setTimestamp(metric.timestamp());
+            if (metric.unit() != null) {
+                metaData.setUnit(metric.unit());
+                if (metric.unit().equals("Count")) {
                     metaData.setType(Types.MetricMetadata.MetricType.COUNTER);
-                    sample.setValue(metric.value.count);
+                    sample.setValue(metric.value().count());
                 }
                 // TODO: What about other types?
             }
-            System.out.printf("Adding sample %f at timestamp %d for metric '%s'\n", sample.getValue(), sample.getTimestamp(), metricName);
+            logger.debug("Adding sample {} at timestamp {} for metric '{}'", sample.getValue(), sample.getTimestamp(), metricName);
             timeSeries.addSamples(sample.build());
-            metaData.setMetricFamilyName(sanitize(metric.namespace));
+            metaData.setMetricFamilyName(sanitizeLabel(metric.namespace()));
         }
         return new Pair<>(timeSeries.build(), metaData.build());
     }
 
-    private String sanitize (String input){
-            return input.replaceAll("[^a-zA-Z0-9_]", "_").toLowerCase();
+    /**
+     * This method takes an input string and replaces any noncon
+     * @param input
+     * @param regex
+     * @return
+     */
+    private String sanitize(String input, String regex) {
+        if (input.matches(regex)) {
+            return input;
+        } else {
+            String sanitized = input.replaceAll("[^a-zA-Z0-9_]", "_");
+            if (!sanitized.isEmpty() && Character.isDigit(sanitized.charAt(0))) {
+                sanitized = "_" + sanitized.substring(1);
+            }
+            return sanitized;
         }
+    }
+
+    private String sanitizeName(String input) {
+        return this.sanitize(input, "[a-zA-Z_:][a-zA-Z0-9_:]*");
+    }
+
+    private String sanitizeLabel(String input) {
+        return this.sanitize(input, "[a-zA-Z_][a-zA-Z0-9_]*");
     }
 
     record Pair<F, S>(F first, S second) {
     }
-
+}
