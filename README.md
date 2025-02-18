@@ -82,23 +82,43 @@ The main components of the Lambda function are:
    ```
 3. The output JAR file will be located in the `target` directory.
 
-### Deploying the Lambda Function
+### Creating resources and Deploying the Lambda Function
 
-1. Create a new Lambda function in the AWS Management Console.
-2. Upload the JAR file from the `target` directory.
-3. Set the handler to `com.example.LambdaHandler::handleRequest`.
-4. Configure the Lambda function with the necessary environment variables (e.g., Prometheus remote write URL).
-5. Set up a Kinesis Firehose delivery stream to trigger the Lambda function.
+1. Change the directory to the terraform directory.
+2. ```sh
+   cd terraform
+   
+   ```sh
+   terraform init
+   
+   ```sh
+   terraform plan
+   
+   ```sh
+   terraform apply
+   
+   ```sh
+   yes
+   
+3.  ```sh
+   terraform init
+4. ```sh
+   terraform plan
+5. ```sh
+   terraform plan
+   
+6. ```sh
+   terraform apply
+   
+7.  ```sh
+   yes
 
 ## Configuration
 
-### Environment Variables
-
-- `PROMETHEUS_REMOTEWRITE_URL`: The URL of the Prometheus PushGateway.
 
 ### IAM Permissions
 
-Ensure the Lambda execution role has the necessary permissions to access Kinesis Firehose and CloudWatch Logs.
+The Lambda execution role will have the necessary permissions to access Kinesis Firehose, s3, CloudWatch Logs and AWS amp Prometheus.
 
 ## Usage
 
@@ -113,17 +133,9 @@ The Lambda function will automatically process incoming Kinesis Firehose events,
 
 Metrics are named using the format `<metric_name>_<metric_type>`, where `metric_type` can be `count`, `sum`, `max`, or `min`.
 
-## Testing
-
-### Unit Tests
-
-Unit tests can be run using Maven:
-
-```sh
-mvn test
 ```
    
-**Terraform Modules** 
-   All resources are provisioned using reusable Terraform modules.
+**Terraform folder** 
+   All resources all the resources that you will use and create, will be located in the terraform directory.
 ---
 
